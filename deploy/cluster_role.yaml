@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: intel-rmd-operator
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch", "patch", "update"]
+- apiGroups: [""]
+  resources: ["nodes/status"] 
+  verbs: ["get", "list", "watch", "patch", "update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "patch", "create", "update"]
+- apiGroups: ["intel.com"]
+  resources: ["rmdworkloads", "rmdnodestates"] 
+  verbs: ["get", "list", "watch", "patch", "create", "update"]
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: intel-rmd-node-agent
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "patch", "create", "update"]
+- apiGroups: ["intel.com"]
+  resources: ["rmdworkloads"]
+  verbs: ["get", "list", "watch", "patch", "create", "update"]

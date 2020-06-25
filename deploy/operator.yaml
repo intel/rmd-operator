@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intel-rmd-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: intel-rmd-operator
+  template:
+    metadata:
+      labels:
+        name: intel-rmd-operator
+    spec:
+      serviceAccountName: intel-rmd-operator
+      containers:
+        - name: intel-rmd-operator
+          # Replace this with the built image name
+          image: intel-rmd-operator 
+          command:
+          - intel-rmd-operator
+          imagePullPolicy: IfNotPresent 
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "intel-rmd-operator"

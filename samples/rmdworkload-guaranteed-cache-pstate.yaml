@@ -1,0 +1,14 @@
+apiVersion: intel.com/v1alpha1
+kind: RmdWorkload
+metadata:
+  name: rmdworkload-guaranteed-cache-pstate
+spec:
+  # Add fields here
+  coreIds: ["4","5","6","7"]
+  cache:
+    max: 2     
+    min: 2
+  pstate:
+    ratio: "3.0"
+    monitoring: "on"
+  nodes: ["worker-node-1","worker-node-2"]

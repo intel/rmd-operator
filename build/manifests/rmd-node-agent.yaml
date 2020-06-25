@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rmd-node-agent-
+  namespace: default
+spec:
+  serviceAccountName: "intel-rmd-node-agent"      
+  containers:
+  - image: intel-rmd-node-agent:latest
+    imagePullPolicy: IfNotPresent
+    name: rmd-node-agent
+    volumeMounts:
+    - mountPath: /sys/fs/
+      name: cgroup
+      mountPropagation: HostToContainer
+    env:
+      - name: WATCH_NAMESPACE
+        value: ""
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name      
+      - name: OPERATOR_NAME
+        value: "intel-rmd-node-agent"
+  volumes:
+  - name: cgroup 
+    hostPath:
+      path: /sys/fs/     

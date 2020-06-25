@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: guaranteed-cache-pstate-pod-
+  labels:
+    name: nginx
+  annotations:
+    nginx1_cache_min: "2"
+    nginx1_pstate_ratio: "1.5"
+    nginx1_pstate_monitoring: "on"
+spec:
+  containers:
+  - name: nginx1
+    image: nginx
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: 1
+        intel.com/l3_cache_ways: 2
+      limits:
+        memory: "64Mi"
+        cpu: 1
+        intel.com/l3_cache_ways: 2

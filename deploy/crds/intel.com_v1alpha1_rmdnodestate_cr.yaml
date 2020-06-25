@@ -1,0 +1,7 @@
+apiVersion: intel.com/v1alpha1
+kind: RmdNodeState
+metadata:
+  name: example-rmdnodestate
+spec:
+  # Add fields here
+  size: 3
