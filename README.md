@@ -16,7 +16,7 @@ Note: NFD is recommended, but not essential. Node labels can also be applied man
 ## Setup
 
 ### Debug Mode
-To use the operator with RMD in [debug mode](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#run-the-service), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8081` before building the operator. Debug mode is only advised for testing. 
+To use the operator with RMD in [debug mode](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#run-the-service), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8081` before building the operator. Debug mode is advised for testing only. 
 
 ### TLS Enablement
 To use the operator with [RMD with TLS enabled](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#access-rmd-by-tls), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8443` before building the operator. The certificates provided in this repository are taken from the [RMD repository](https://github.com/intel/rmd/tree/master/etc/rmd/cert/client) and should be used for testing only. The user can generate their own certs for production and replace with those existing. The client certs for the RMD operator are stored in the following locations:
@@ -266,9 +266,9 @@ spec:
 This pod spec has one container requesting 3 exclusive CPUs and 2 cache ways. The number of cache ways requested is also interpreted as the value for `max cache` for the RmdWorkload.
 The `min cache` value is specified in the pod annotations. The naming convention for RMD workload related annotations **must** follow the table below.
 
-### Pod Annotaions Naming Convention
+### Pod Annotations Naming Convention
 **Note**: Annotations **must** be prefixed with the relevant container name as shown below.
-|  Specification | Container Name | Required Annotaion Name |
+|  Specification | Container Name | Required Annotation Name |
 | ------ | ------ | ------ |
 | Min Cache | nginx1 | nginx1_cache_min |
 | Policy | nginx1 | nginx1_policy |
