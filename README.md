@@ -281,7 +281,7 @@ Failure to follow the provided annotation naming convention will result in failu
 `kubectl create -f sample/pod-guaranteed-cache.yaml`
 
 #### Display RmdWorkload
-If successful, the RmDWorkload will be created with the naming convention `rmd-workload-<pod-name>`
+If successful, the RmdWorkload will be created with the naming convention `rmd-workload-<pod-name>`
 
 `kubectl describe rmdworkload rmd-workload-guaranteed-cache-pod-86676`
 
@@ -324,7 +324,7 @@ When an RmdWorkload is created by the operator based on a pod spec, that pod obj
 
 ### Limitations in Creating RmdWorkloads via Pod Spec
 *  Only one container per pod may request l3 cache ways.
-*  Automatic configuration is only achievalbe with the native Kubernetes CPU Manager static policy.
+*  Automatic configuration is only achievable with the native Kubernetes CPU Manager static policy.
 *  The user has no control over which CPUs are configured with the automatically created RmdWorkload policy as the CPU Manager is in charge of CPU allocation.
 
 
