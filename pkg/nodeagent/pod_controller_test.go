@@ -269,9 +269,11 @@ func TestPodControllerReconcile(t *testing.T) {
 					Nodes:   []string{"example-node-1.com"},
 					CoreIds: []string{"0"},
 					Policy:  "gold",
-					Cache: intelv1alpha1.Cache{
-						Max: 2,
-						Min: 2,
+					Rdt: intelv1alpha1.Rdt{
+						Cache: intelv1alpha1.Cache{
+							Max: 2,
+							Min: 2,
+						},
 					},
 				},
 			},
@@ -475,9 +477,11 @@ func TestBuildRmdWorkload(t *testing.T) {
 					Nodes:   []string{"example-node-1.com"},
 					CoreIds: []string{"0"},
 					Policy:  "gold",
-					Cache: intelv1alpha1.Cache{
-						Max: 2,
-						Min: 2,
+					Rdt: intelv1alpha1.Rdt{
+						Cache: intelv1alpha1.Cache{
+							Max: 2,
+							Min: 2,
+						},
 					},
 				},
 			},
@@ -535,13 +539,17 @@ func TestBuildRmdWorkload(t *testing.T) {
 					Nodes:   []string{"example-node-1.com"},
 					CoreIds: []string{"0", "11"},
 					Policy:  "gold",
-					Cache: intelv1alpha1.Cache{
-						Max: 2,
-						Min: 2,
+					Rdt: intelv1alpha1.Rdt{
+						Cache: intelv1alpha1.Cache{
+							Max: 2,
+							Min: 2,
+						},
 					},
-					Pstate: intelv1alpha1.Pstate{
-						Monitoring: "on",
-						Ratio:      "1.5",
+					Plugins: intelv1alpha1.Plugins{
+						Pstate: intelv1alpha1.Pstate{
+							Monitoring: "on",
+							Ratio:      "1.5",
+						},
 					},
 				},
 			},
@@ -598,9 +606,11 @@ func TestBuildRmdWorkload(t *testing.T) {
 				Spec: intelv1alpha1.RmdWorkloadSpec{
 					Nodes:   []string{"example-node-1.com"},
 					CoreIds: []string{"8", "9", "10", "11", "12"},
-					Cache: intelv1alpha1.Cache{
-						Max: 2,
-						Min: 2,
+					Rdt: intelv1alpha1.Rdt{
+						Cache: intelv1alpha1.Cache{
+							Max: 2,
+							Min: 2,
+						},
 					},
 				},
 			},

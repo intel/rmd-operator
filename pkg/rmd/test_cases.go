@@ -18,37 +18,41 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 
 	wl1.UUID = "rmd-workload-pod-1"
 	max1 := uint32(2)
-	wl1.Cache.Max = &max1
+	wl1.Rdt.Cache.Max = &max1
 	min1 := uint32(2)
-	wl1.Cache.Min = &min1
+	wl1.Rdt.Cache.Min = &min1
 	wlds = append(wlds, wl1)
 
 	wl2 := &rmdtypes.RDTWorkLoad{}
 	wl2.UUID = "rmd-workload-pod-2"
 	max2 := uint32(2)
-	wl2.Cache.Max = &max2
+	wl2.Rdt.Cache.Max = &max2
 	min2 := uint32(1)
-	wl2.Cache.Min = &min2
+	wl2.Rdt.Cache.Min = &min2
 	wlds = append(wlds, wl2)
 
 	wl3 := &rmdtypes.RDTWorkLoad{}
 	wl3.UUID = "rmd-workload-pod-3"
 	max3 := uint32(1)
-	wl3.Cache.Max = &max3
+	wl3.Rdt.Cache.Max = &max3
 	min3 := uint32(1)
-	wl3.Cache.Min = &min3
+	wl3.Rdt.Cache.Min = &min3
 	wlds = append(wlds, wl3)
 
 	wl4 := &rmdtypes.RDTWorkLoad{}
 	wl4.UUID = "rmd-workload-pod-4"
 	max4 := uint32(2)
-	wl4.Cache.Max = &max4
+	wl4.Rdt.Cache.Max = &max4
 	min4 := uint32(2)
-	wl4.Cache.Min = &min4
+	wl4.Rdt.Cache.Min = &min4
+	wl4plugins := make(map[string]map[string]interface{})
 	ratio4 := float64(1.5)
-	wl4.PState.Ratio = &ratio4
+	wl4pstate := make(map[string]interface{})
+	wl4pstate["ratio"] = ratio4
+	wl4plugins["pstate"] = wl4pstate
 	monitoring4 := "on"
-	wl4.PState.Monitoring = &monitoring4
+	wl4plugins["pstate"]["monitoring"] = monitoring4
+	wl4.Plugins = wl4plugins
 	wlds = append(wlds, wl4)
 
 	wl5 := &rmdtypes.RDTWorkLoad{}
@@ -56,13 +60,17 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wl5.UUID = "rmd-workload-pod-5"
 	max5 := uint32(2)
 	wl5.Policy = "gold"
-	wl5.Cache.Max = &max5
+	wl5.Rdt.Cache.Max = &max5
 	min5 := uint32(2)
-	wl5.Cache.Min = &min5
+	wl5.Rdt.Cache.Min = &min5
+	wl5plugins := make(map[string]map[string]interface{})
 	ratio5 := float64(1.5)
-	wl5.PState.Ratio = &ratio5
+	wl5pstate := make(map[string]interface{})
+	wl5pstate["ratio"] = ratio5
+	wl5plugins["pstate"] = wl5pstate
 	monitoring5 := "on"
-	wl5.PState.Monitoring = &monitoring5
+	wl5plugins["pstate"]["monitoring"] = monitoring5
+	wl5.Plugins = wl5plugins
 	wlds = append(wlds, wl5)
 
 	return wlds
@@ -76,9 +84,11 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 			},
 
 			Spec: intelv1alpha1.RmdWorkloadSpec{
-				Cache: intelv1alpha1.Cache{
-					Max: 2,
-					Min: 2,
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 2,
+						Min: 2,
+					},
 				},
 			},
 		},
@@ -88,9 +98,11 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 			},
 
 			Spec: intelv1alpha1.RmdWorkloadSpec{
-				Cache: intelv1alpha1.Cache{
-					Max: 2,
-					Min: 1,
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 2,
+						Min: 1,
+					},
 				},
 			},
 		},
@@ -100,9 +112,11 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 			},
 
 			Spec: intelv1alpha1.RmdWorkloadSpec{
-				Cache: intelv1alpha1.Cache{
-					Max: 1,
-					Min: 1,
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 1,
+						Min: 1,
+					},
 				},
 			},
 		},
@@ -112,13 +126,17 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 			},
 
 			Spec: intelv1alpha1.RmdWorkloadSpec{
-				Cache: intelv1alpha1.Cache{
-					Max: 2,
-					Min: 2,
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 2,
+						Min: 2,
+					},
 				},
-				Pstate: intelv1alpha1.Pstate{
-					Ratio:      "1.5",
-					Monitoring: "on",
+				Plugins: intelv1alpha1.Plugins{
+					Pstate: intelv1alpha1.Pstate{
+						Ratio:      "1.5",
+						Monitoring: "on",
+					},
 				},
 			},
 		},
@@ -129,13 +147,17 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 
 			Spec: intelv1alpha1.RmdWorkloadSpec{
 				CoreIds: []string{"0", "20"},
-				Cache: intelv1alpha1.Cache{
-					Max: 2,
-					Min: 2,
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 2,
+						Min: 2,
+					},
 				},
-				Pstate: intelv1alpha1.Pstate{
-					Ratio:      "1.5",
-					Monitoring: "on",
+				Plugins: intelv1alpha1.Plugins{
+					Pstate: intelv1alpha1.Pstate{
+						Ratio:      "1.5",
+						Monitoring: "on",
+					},
 				},
 				Policy: "gold",
 			},

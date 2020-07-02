@@ -109,7 +109,7 @@ func NewDefaultOperatorRmdClient() OperatorRmdClient {
 }
 
 // UpdateNodeStatusWorkload populates WorkloadMap with workload data for RmdNodeState
-func UpdateNodeStatusWorkload(workload *rmdtypes.RDTWorkLoad) intelv1alpha1.WorkloadMap {
+func UpdateNodeStatusWorkload(workload *rmdtypes.RDTWorkLoad) (intelv1alpha1.WorkloadMap, error) {
 	workloadMap := make(intelv1alpha1.WorkloadMap)
 
 	if workload.ID != "" {
@@ -124,11 +124,17 @@ func UpdateNodeStatusWorkload(workload *rmdtypes.RDTWorkLoad) intelv1alpha1.Work
 	if workload.CosName != "" {
 		workloadMap["Cos Name"] = workload.CosName
 	}
-	if workload.Cache.Max != nil {
-		workloadMap["Cache Max"] = strconv.Itoa(int(*workload.Cache.Max))
+	if workload.Rdt.Cache.Max != nil {
+		workloadMap["Cache Max"] = strconv.Itoa(int(*workload.Rdt.Cache.Max))
 	}
-	if workload.Cache.Min != nil {
-		workloadMap["Cache Min"] = strconv.Itoa(int(*workload.Cache.Min))
+	if workload.Rdt.Cache.Min != nil {
+		workloadMap["Cache Min"] = strconv.Itoa(int(*workload.Rdt.Cache.Min))
+	}
+	if workload.Rdt.Mba.Percentage != nil {
+		workloadMap["MBA Percentage"] = strconv.Itoa(int(*workload.Rdt.Mba.Percentage))
+	}
+	if workload.Rdt.Mba.Mbps != nil {
+		workloadMap["MBA Mbps"] = strconv.Itoa(int(*workload.Rdt.Mba.Mbps))
 	}
 	if workload.Origin != "" {
 		workloadMap["Origin"] = workload.Origin
@@ -136,14 +142,31 @@ func UpdateNodeStatusWorkload(workload *rmdtypes.RDTWorkLoad) intelv1alpha1.Work
 	if workload.Policy != "" {
 		workloadMap["Policy"] = workload.Policy
 	}
-	if workload.PState.Ratio != nil {
-		workloadMap["P-State Ratio"] = fmt.Sprintf("%f", *workload.PState.Ratio)
+	if len(workload.Plugins) != 0 {
+		pluginsData, err := json.Marshal(workload.Plugins)
+		if err != nil {
+			return nil, err
+		}
+		pluginsMap := make(map[string]map[string]interface{})
+		err = json.Unmarshal(pluginsData, &pluginsMap)
+		if err != nil {
+			return nil, err
+		}
+		// Look for pstate data and add to workloadMap
+		if pstateMap, ok := pluginsMap["pstate"]; ok {
+			if ratio, ok := pstateMap["ratio"]; ok {
+				if ratio != nil {
+					workloadMap["P-State Ratio"] = fmt.Sprintf("%f", ratio)
+				}
+			}
+			if monitoring, ok := pstateMap["monitoring"]; ok {
+				if monitoring != nil {
+					workloadMap["P-State Monitoring"] = fmt.Sprintf("%v", monitoring)
+				}
+			}
+		}
 	}
-	if workload.PState.Monitoring != nil {
-		workloadMap["P-State Monitoring"] = *workload.PState.Monitoring
-	}
-
-	return workloadMap
+	return workloadMap, nil
 }
 
 // GetAvailableCacheWays returns available l3 cache ways for Node Status update
@@ -204,22 +227,44 @@ func formatWorkload(workloadCR *intelv1alpha1.RmdWorkload) (*rmdtypes.RDTWorkLoa
 	rdtWorkload.Policy = workloadCR.Spec.Policy
 	rdtWorkload.CoreIDs = workloadCR.Spec.CoreIds
 
-	maxCache := uint32(workloadCR.Spec.Cache.Max)
-	rdtWorkload.Cache.Max = &maxCache
-	minCache := uint32(workloadCR.Spec.Cache.Min)
-	rdtWorkload.Cache.Min = &minCache
+	// Add Cache data if it has been specified in the workload.
+	maxCache := uint32(workloadCR.Spec.Rdt.Cache.Max)
+	rdtWorkload.Rdt.Cache.Max = &maxCache
+	minCache := uint32(workloadCR.Spec.Rdt.Cache.Min)
+	rdtWorkload.Rdt.Cache.Min = &minCache
 
-	// Add P-State data to be marshalled if it has been specified in the workload.
-	if len(workloadCR.Spec.Pstate.Ratio) != 0 {
-		ratio, err := strconv.ParseFloat(workloadCR.Spec.Pstate.Ratio, 64)
+	// Add MBA data if it has been specified in the workload.
+	mbaPercentage := uint32(workloadCR.Spec.Rdt.Mba.Percentage)
+	if mbaPercentage != 0 {
+		rdtWorkload.Rdt.Mba.Percentage = &mbaPercentage
+	}
+	mbaMbps := uint32(workloadCR.Spec.Rdt.Mba.Mbps)
+	if mbaMbps != 0 {
+		rdtWorkload.Rdt.Mba.Mbps = &mbaMbps
+	}
+
+	// Add Plugins (PState) data to be marshalled if it has been specified in the workload.
+	plugins := make(map[string]map[string]interface{})
+	pstate := make(map[string]interface{})
+	if len(workloadCR.Spec.Plugins.Pstate.Ratio) != 0 {
+		ratio, err := strconv.ParseFloat(workloadCR.Spec.Plugins.Pstate.Ratio, 64)
 		if err != nil {
 			return &rmdtypes.RDTWorkLoad{}, err
 		}
-		rdtWorkload.PState.Ratio = &ratio
+		if ratio != 0 {
+			pstate["ratio"] = ratio
+			plugins["pstate"] = pstate
+		}
 	}
-	if len(workloadCR.Spec.Pstate.Monitoring) != 0 {
-		monitoring := workloadCR.Spec.Pstate.Monitoring
-		rdtWorkload.PState.Monitoring = &monitoring
+	if len(workloadCR.Spec.Plugins.Pstate.Monitoring) != 0 {
+		monitoring := workloadCR.Spec.Plugins.Pstate.Monitoring
+		if len(monitoring) != 0 {
+			pstate["monitoring"] = monitoring
+			plugins["pstate"] = pstate
+		}
+	}
+	if len(plugins) != 0 {
+		rdtWorkload.Plugins = plugins
 	}
 	return rdtWorkload, nil
 }

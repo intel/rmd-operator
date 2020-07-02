@@ -50,6 +50,8 @@ spec:
               additionalProperties:
                 additionalProperties:
                   type: string
+                description: WorkloadMap stores string values of workload data for
+                  RmdNodeStatus
                 type: object
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                 of cluster Important: Run "operator-sdk generate k8s" to regenerate
