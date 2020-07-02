@@ -31,16 +31,6 @@ spec:
         spec:
           description: RmdWorkloadSpec defines the desired state of RmdWorkload
           properties:
-            cache:
-              properties:
-                max:
-                  type: integer
-                min:
-                  type: integer
-              required:
-              - max
-              - min
-              type: object
             coreIds:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after
@@ -53,18 +43,48 @@ spec:
               items:
                 type: string
               type: array
+            plugins:
+              description: Plugins contains individual RMD plugin types
+              properties:
+                pstate:
+                  description: Pstate defines pstate parametes for workload
+                  properties:
+                    monitoring:
+                      type: string
+                    ratio:
+                      type: string
+                  required:
+                  type: object
+              required:
+              type: object
             policy:
               type: string
-            pstate:
+            rdt:
+              description: Rdt related settings (Cache, MBA)
               properties:
-                monitoring:
-                  type: string
-                ratio:
-                  type: string
+                cache:
+                  description: Cache defines cache parameters for workload
+                  properties:
+                    max:
+                      type: integer
+                    min:
+                      type: integer
+                  required:
+                  - max
+                  - min
+                  type: object
+                mba:
+                  description: Mba defines mba parameters for workload
+                  properties:
+                    mbps:
+                      type: integer
+                    percentage:
+                      type: integer
+                  required:
+                  type: object
               required:
               type: object
           required:
-          - cache
           - coreIds
           - nodes
           type: object
@@ -73,6 +93,8 @@ spec:
           properties:
             workloadStates:
               additionalProperties:
+                description: WorkloadState defines state of a workload for a single
+                  node
                 properties:
                   cosName:
                     type: string

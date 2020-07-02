@@ -7,10 +7,27 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// Rdt related settings (Cache, MBA)
+type Rdt struct {
+	Cache Cache `json:"cache"`
+	Mba   Mba   `json:"mba"`
+}
+
 // Cache defines cache parameters for workload
 type Cache struct {
 	Max int `json:"max"`
 	Min int `json:"min"`
+}
+
+// Mba defines mba parameters for workload
+type Mba struct {
+	Percentage int `json:"percentage"`
+	Mbps       int `json:"mbps"`
+}
+
+// Plugins contains individual RMD plugin types
+type Plugins struct {
+	Pstate Pstate `json:"pstate"`
 }
 
 // Pstate defines pstate parametes for workload
@@ -34,8 +51,8 @@ type RmdWorkloadSpec struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	CoreIds []string `json:"coreIds"`
 	Policy  string   `json:"policy,omniempty"`
-	Cache   Cache    `json:"cache"`
-	Pstate  Pstate   `json:"pstate,omniempty"`
+	Rdt     Rdt      `json:"rdt"`
+	Plugins Plugins  `json:"plugins,omniempty"`
 	Nodes   []string `json:"nodes"`
 }
 

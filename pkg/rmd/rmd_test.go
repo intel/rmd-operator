@@ -69,9 +69,12 @@ func TestUpdateNodeStatusWorkload(t *testing.T) {
 		},
 	}
 	for _, tc := range tcases {
-		workloadMap := UpdateNodeStatusWorkload(tc.workload)
+		workloadMap, err := UpdateNodeStatusWorkload(tc.workload)
+		if err != nil {
+			t.Errorf("error occurred: %v", err)
+		}
 		if !reflect.DeepEqual(workloadMap, tc.expectedMap) {
-			t.Errorf("Expected map to be %v, got %v", tc.expectedMap, workloadMap)
+			t.Errorf("Case %v - Expected map to be %v, got %v", tc.name, tc.expectedMap, workloadMap)
 		}
 	}
 }

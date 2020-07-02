@@ -33,6 +33,7 @@ const (
 	cacheMinConst         = "cache_min"
 	pstateMonitoringConst = "pstate_monitoring"
 	pstateRatioConst      = "pstate_ratio"
+	mbaPercentageConst    = "mba_percentage"
 	l3Cache               = "intel.com/l3_cache_ways"
 	dockerPrefix          = "docker://"
 	cpusetFileConst       = "/cpuset.cpus"
@@ -260,7 +261,7 @@ func buildRmdWorkload(pod *corev1.Pod) (*intelv1alpha1.RmdWorkload, error) {
 
 	rmdWorkload.SetName(rmdWorkloadNamespacedName.Name)
 	rmdWorkload.SetNamespace(rmdWorkloadNamespacedName.Namespace)
-	rmdWorkload.Spec.Cache.Max = maxCache
+	rmdWorkload.Spec.Rdt.Cache.Max = maxCache
 	rmdWorkload.Spec.CoreIds = coreIDs
 	rmdWorkload.Spec.Nodes = make([]string, 0)
 	rmdWorkload.Spec.Nodes = append(rmdWorkload.Spec.Nodes, pod.Spec.NodeName)
@@ -281,14 +282,21 @@ func buildRmdWorkload(pod *corev1.Pod) (*intelv1alpha1.RmdWorkload, error) {
 			if err != nil {
 				continue
 			}
-			rmdWorkload.Spec.Cache.Min = minCache
+			rmdWorkload.Spec.Rdt.Cache.Min = minCache
+		case strings.HasSuffix(field, mbaPercentageConst):
+			mbaPercentage, err := strconv.Atoi(data)
+			if err != nil {
+				continue
+			}
+			rmdWorkload.Spec.Rdt.Mba.Percentage = mbaPercentage
+
 		case strings.HasSuffix(field, pstateRatioConst):
 			if data != "" {
-				rmdWorkload.Spec.Pstate.Ratio = data
+				rmdWorkload.Spec.Plugins.Pstate.Ratio = data
 			}
 		case strings.HasSuffix(field, pstateMonitoringConst):
 			if data != "" {
-				rmdWorkload.Spec.Pstate.Monitoring = data
+				rmdWorkload.Spec.Plugins.Pstate.Monitoring = data
 			}
 		}
 

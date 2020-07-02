@@ -134,7 +134,10 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 
 	workloadMap := make(map[string]intelv1alpha1.WorkloadMap)
 	for _, existingWorkload := range existingWorkloads {
-		workloadMap[existingWorkload.UUID] = rmd.UpdateNodeStatusWorkload(existingWorkload)
+		workloadMap[existingWorkload.UUID], err = rmd.UpdateNodeStatusWorkload(existingWorkload)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	rmdNodeState.Status.Workloads = workloadMap
