@@ -262,7 +262,7 @@ func TestPodControllerReconcile(t *testing.T) {
 			},
 			expectedRmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-pod-1",
+					Name:      "pod-1-rmd-workload-nginx1",
 					Namespace: "default",
 				},
 				Spec: intelv1alpha1.RmdWorkloadSpec{
@@ -421,10 +421,10 @@ func TestReadCgroupCpuset(t *testing.T) {
 
 func TestBuildRmdWorkload(t *testing.T) {
 	tcases := []struct {
-		name                string
-		pod                 *corev1.Pod
-		cores               string
-		expectedRmdWorkload *intelv1alpha1.RmdWorkload
+		name                 string
+		pod                  *corev1.Pod
+		cores                string
+		expectedRmdWorkloads []*intelv1alpha1.RmdWorkload
 	}{
 		{
 			name: "test case 1 - all fields with cache",
@@ -468,19 +468,21 @@ func TestBuildRmdWorkload(t *testing.T) {
 				},
 			},
 			cores: "0",
-			expectedRmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-pod-1",
-					Namespace: "default",
-				},
-				Spec: intelv1alpha1.RmdWorkloadSpec{
-					Nodes:   []string{"example-node-1.com"},
-					CoreIds: []string{"0"},
-					Policy:  "gold",
-					Rdt: intelv1alpha1.Rdt{
-						Cache: intelv1alpha1.Cache{
-							Max: 2,
-							Min: 2,
+			expectedRmdWorkloads: []*intelv1alpha1.RmdWorkload{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1-rmd-workload-nginx1",
+						Namespace: "default",
+					},
+					Spec: intelv1alpha1.RmdWorkloadSpec{
+						Nodes:   []string{"example-node-1.com"},
+						CoreIds: []string{"0"},
+						Policy:  "gold",
+						Rdt: intelv1alpha1.Rdt{
+							Cache: intelv1alpha1.Cache{
+								Max: 2,
+								Min: 2,
+							},
 						},
 					},
 				},
@@ -530,25 +532,27 @@ func TestBuildRmdWorkload(t *testing.T) {
 				},
 			},
 			cores: "0,11",
-			expectedRmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-pod-1",
-					Namespace: "default",
-				},
-				Spec: intelv1alpha1.RmdWorkloadSpec{
-					Nodes:   []string{"example-node-1.com"},
-					CoreIds: []string{"0", "11"},
-					Policy:  "gold",
-					Rdt: intelv1alpha1.Rdt{
-						Cache: intelv1alpha1.Cache{
-							Max: 2,
-							Min: 2,
-						},
+			expectedRmdWorkloads: []*intelv1alpha1.RmdWorkload{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1-rmd-workload-nginx1",
+						Namespace: "default",
 					},
-					Plugins: intelv1alpha1.Plugins{
-						Pstate: intelv1alpha1.Pstate{
-							Monitoring: "on",
-							Ratio:      "1.5",
+					Spec: intelv1alpha1.RmdWorkloadSpec{
+						Nodes:   []string{"example-node-1.com"},
+						CoreIds: []string{"0", "11"},
+						Policy:  "gold",
+						Rdt: intelv1alpha1.Rdt{
+							Cache: intelv1alpha1.Cache{
+								Max: 2,
+								Min: 2,
+							},
+						},
+						Plugins: intelv1alpha1.Plugins{
+							Pstate: intelv1alpha1.Pstate{
+								Monitoring: "on",
+								Ratio:      "1.5",
+							},
 						},
 					},
 				},
@@ -598,18 +602,20 @@ func TestBuildRmdWorkload(t *testing.T) {
 				},
 			},
 			cores: "8-12",
-			expectedRmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-pod-1",
-					Namespace: "default",
-				},
-				Spec: intelv1alpha1.RmdWorkloadSpec{
-					Nodes:   []string{"example-node-1.com"},
-					CoreIds: []string{"8", "9", "10", "11", "12"},
-					Rdt: intelv1alpha1.Rdt{
-						Cache: intelv1alpha1.Cache{
-							Max: 2,
-							Min: 2,
+			expectedRmdWorkloads: []*intelv1alpha1.RmdWorkload{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1-rmd-workload-nginx1",
+						Namespace: "default",
+					},
+					Spec: intelv1alpha1.RmdWorkloadSpec{
+						Nodes:   []string{"example-node-1.com"},
+						CoreIds: []string{"8", "9", "10", "11", "12"},
+						Rdt: intelv1alpha1.Rdt{
+							Cache: intelv1alpha1.Cache{
+								Max: 2,
+								Min: 2,
+							},
 						},
 					},
 				},
@@ -628,12 +634,14 @@ func TestBuildRmdWorkload(t *testing.T) {
 		}
 		defer os.RemoveAll("./test_cgroup")
 
-		rmdWorkload, err := buildRmdWorkload(tc.pod)
+		rmdWorkloads, err := buildRmdWorkload(tc.pod)
 		if err != nil {
 			t.Errorf("Failed: %v", err)
 		}
-		if !reflect.DeepEqual(tc.expectedRmdWorkload, rmdWorkload) {
-			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.expectedRmdWorkload, rmdWorkload)
+		for i := range rmdWorkloads {
+			if !reflect.DeepEqual(tc.expectedRmdWorkloads[i], rmdWorkloads[i]) {
+				t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.expectedRmdWorkloads[i], rmdWorkloads[i])
+			}
 		}
 
 	}
@@ -642,10 +650,9 @@ func TestBuildRmdWorkload(t *testing.T) {
 
 func TestGetContainerRequestingCache(t *testing.T) {
 	tcases := []struct {
-		name         string
-		pod          *corev1.Pod
-		container    *corev1.Container
-		cacheRequest int
+		name       string
+		pod        *corev1.Pod
+		containers []corev1.Container
 	}{
 		{
 			name: "test case 1 - single contianer requesting cache",
@@ -670,18 +677,19 @@ func TestGetContainerRequestingCache(t *testing.T) {
 					},
 				},
 			},
-			container: &corev1.Container{
-				Name: "nginx1",
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
-					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
+			containers: []corev1.Container{
+				{
+					Name: "nginx1",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
+						},
 					},
 				},
 			},
-			cacheRequest: 2,
 		},
 
 		{
@@ -725,26 +733,26 @@ func TestGetContainerRequestingCache(t *testing.T) {
 					},
 				},
 			},
-			container: &corev1.Container{
-				Name: "nginx2",
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
-						corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
-						corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
-					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
-						corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
-						corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
+			containers: []corev1.Container{
+				{
+					Name: "nginx2",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
+							corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
+							corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("2"),
+						},
 					},
 				},
 			},
-
-			cacheRequest: 2,
 		},
 		{
-			name: "test case 3 - 2 containers, 2 requesting cache. Only consider 1st ",
+			name: "test case 3 - 2 containers, 2 requesting cache.",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "pod-1",
@@ -786,24 +794,40 @@ func TestGetContainerRequestingCache(t *testing.T) {
 					},
 				},
 			},
-			container: &corev1.Container{
-				Name: "nginx1",
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
-						corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
-						corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("3"),
+			containers: []corev1.Container{
+				{
+					Name: "nginx1",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
+							corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("3"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
+							corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("3"),
+						},
 					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
-						corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
-						corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("3"),
+				},
+				{
+					Name: "nginx2",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
+							corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("1"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceCPU):        resource.MustParse("1"),
+							corev1.ResourceName(corev1.ResourceMemory):     resource.MustParse("1G"),
+							corev1.ResourceName("intel.com/l3_cache_ways"): resource.MustParse("1"),
+						},
 					},
 				},
 			},
-
-			cacheRequest: 3,
 		},
+
 		{
 			name: "test case 4 - no container requesting cache",
 			pod: &corev1.Pod{
@@ -827,14 +851,13 @@ func TestGetContainerRequestingCache(t *testing.T) {
 					},
 				},
 			},
-			container:    nil,
-			cacheRequest: 0,
+			containers: []corev1.Container{},
 		},
 	}
 	for _, tc := range tcases {
-		container, cacheRequest := getContainerRequestingCache(tc.pod)
-		if !reflect.DeepEqual(container, tc.container) || cacheRequest != tc.cacheRequest {
-			t.Errorf("Failed: %v - Expected\n %v\n and \n%v\n, got \n%v\n and \n%v\n", tc.name, tc.container, tc.cacheRequest, container, cacheRequest)
+		containers := getContainersRequestingCache(tc.pod)
+		if !reflect.DeepEqual(containers, tc.containers) {
+			t.Errorf("Failed: %v - Expected \n%v\n, got \n%v\n", tc.name, tc.containers, containers)
 		}
 
 	}
