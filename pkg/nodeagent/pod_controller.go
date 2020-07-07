@@ -28,12 +28,13 @@ import (
 
 const (
 	defaultNamespace      = "default"
-	rmdWorkloadNameConst  = "rmd-workload-"
+	rmdWorkloadNameConst  = "-rmd-workload-"
 	policyConst           = "policy"
 	cacheMinConst         = "cache_min"
 	pstateMonitoringConst = "pstate_monitoring"
 	pstateRatioConst      = "pstate_ratio"
 	mbaPercentageConst    = "mba_percentage"
+	mbaMbpsConst          = "mba_mbps"
 	l3Cache               = "intel.com/l3_cache_ways"
 	dockerPrefix          = "docker://"
 	cpusetFileConst       = "/cpuset.cpus"
@@ -139,41 +140,42 @@ func (r *ReconcilePod) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, nil
 	}
 
-	rmdWorkload, err := buildRmdWorkload(cachePod)
+	rmdWorkloads, err := buildRmdWorkload(cachePod)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if rmdWorkload == nil {
+	if len(rmdWorkloads) == 0 {
 		return reconcile.Result{}, nil
 	}
+	for _, rmdWorkload := range rmdWorkloads {
+		rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
+		err = r.client.Get(context.TODO(), types.NamespacedName{
+			Name: rmdWorkloadName, Namespace: request.Namespace}, rmdWorkload)
 
-	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
-	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: rmdWorkloadName, Namespace: request.Namespace}, rmdWorkload)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// RmdWorkload not found, create it
-			if err := controllerutil.SetControllerReference(cachePod, rmdWorkload, r.scheme); err != nil {
-				reqLogger.Error(err, "unable to set owner reference on new rmdWorkload")
-				return reconcile.Result{}, err
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// RmdWorkload not found, create it
+				if err := controllerutil.SetControllerReference(cachePod, rmdWorkload, r.scheme); err != nil {
+					reqLogger.Error(err, "unable to set owner reference on new rmdWorkload")
+					return reconcile.Result{}, err
+				}
+				reqLogger.Info("Create workload for pod container requesting cache", "workload name", rmdWorkloadName)
+				err = r.client.Create(context.TODO(), rmdWorkload)
+				if err != nil {
+					reqLogger.Error(err, "Failed to create rmdWorkload")
+					return reconcile.Result{}, err
+				}
+				// Continue to next workload
+				continue
 			}
-			reqLogger.Info("Create workload for pod container requesting cache", "workload name", rmdWorkloadName)
-			err = r.client.Create(context.TODO(), rmdWorkload)
-			if err != nil {
-				reqLogger.Error(err, "Failed to create rmdWorkload")
-				return reconcile.Result{}, err
-			}
-			// Return and don't requeue
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, err
 		}
-		return reconcile.Result{}, err
-	}
-	// RmdWorkload found, update it.
-	err = r.client.Update(context.TODO(), rmdWorkload)
-	if err != nil {
-		reqLogger.Error(err, "Failed to update rmdWorkload")
-		return reconcile.Result{}, err
+		// RmdWorkload found, update it.
+		err = r.client.Update(context.TODO(), rmdWorkload)
+		if err != nil {
+			reqLogger.Error(err, "Failed to update rmdWorkload")
+			return reconcile.Result{}, err
+		}
 	}
 	return reconcile.Result{}, nil
 }
@@ -212,111 +214,135 @@ func (r *ReconcilePod) getNodeAgentPod() (*corev1.Pod, error) {
 	return nodeAgentPod, nil
 }
 
-func buildRmdWorkload(pod *corev1.Pod) (*intelv1alpha1.RmdWorkload, error) {
+func buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWorkload, error) {
 	logger := log.WithName("buildRmdWorkload")
 
-	// Check pod requests for l3 cache.
-	container, maxCache := getContainerRequestingCache(pod)
-	if container == nil || maxCache == 0 {
+	// Check pod for containers requesting l3 cache.
+	containersRequestingCache := getContainersRequestingCache(pod)
+	if len(containersRequestingCache) == 0 {
 		logger.Info("No container requesting cache found in pod")
 		return nil, nil
 	}
-	// Ensure container is requesting exclusive cpus
-	if !exclusiveCPUs(pod, container) {
-		logger.Info("Container is not requesting exclusive cpus")
-		return nil, nil
-	}
-
-	podUID := string(pod.GetObjectMeta().GetUID())
-	if podUID == "" {
-		logger.Info("No pod UID found")
-		return nil, errors.NewServiceUnavailable("pod UID not found")
-
-	}
-
-	containerID := getContainerID(pod, container.Name)
-	coreIDs, err := readCgroupCpuset(podUID, containerID)
-	if err != nil {
-		logger.Error(err, "failed to retrieve cpuset from cgroups")
-		return nil, err
-	}
-	if len(coreIDs) == 0 {
-		logger.Info("cpuset not found in cgroups for container")
-		return nil, nil
-	}
-
-	rmdWorkload := &intelv1alpha1.RmdWorkload{}
-	// Create workload name. Naming convention: "rmd-workload-<pod-name>"
-	podName := string(pod.GetObjectMeta().GetName())
-	rmdWorkloadName := fmt.Sprintf("%s%s", rmdWorkloadNameConst, podName)
-	podNamespace := pod.GetObjectMeta().GetNamespace()
-	if podNamespace == "" {
-		podNamespace = defaultNamespace
-	}
-
-	rmdWorkloadNamespacedName := types.NamespacedName{
-		Name:      rmdWorkloadName,
-		Namespace: podNamespace,
-	}
-
-	rmdWorkload.SetName(rmdWorkloadNamespacedName.Name)
-	rmdWorkload.SetNamespace(rmdWorkloadNamespacedName.Namespace)
-	rmdWorkload.Spec.Rdt.Cache.Max = maxCache
-	rmdWorkload.Spec.CoreIds = coreIDs
-	rmdWorkload.Spec.Nodes = make([]string, 0)
-	rmdWorkload.Spec.Nodes = append(rmdWorkload.Spec.Nodes, pod.Spec.NodeName)
-
-	workloadData := pod.GetObjectMeta().GetAnnotations()
-	for field, data := range workloadData {
-		if !strings.HasPrefix(field, container.Name) {
-			continue
+	rmdWorkloads := make([]*intelv1alpha1.RmdWorkload, 0)
+	for _, container := range containersRequestingCache {
+		// Ensure container is requesting exclusive cpus
+		if !exclusiveCPUs(pod, &container) {
+			logger.Info("Container is not requesting exclusive cpus")
+			return nil, nil
 		}
 
-		switch {
-		case strings.HasSuffix(field, policyConst):
-			if data != "" {
-				rmdWorkload.Spec.Policy = data
-			}
-		case strings.HasSuffix(field, cacheMinConst):
-			minCache, err := strconv.Atoi(data)
-			if err != nil {
-				continue
-			}
-			rmdWorkload.Spec.Rdt.Cache.Min = minCache
-		case strings.HasSuffix(field, mbaPercentageConst):
-			mbaPercentage, err := strconv.Atoi(data)
-			if err != nil {
-				continue
-			}
-			rmdWorkload.Spec.Rdt.Mba.Percentage = mbaPercentage
+		podUID := string(pod.GetObjectMeta().GetUID())
+		if podUID == "" {
+			logger.Info("No pod UID found")
+			return nil, errors.NewServiceUnavailable("pod UID not found")
 
-		case strings.HasSuffix(field, pstateRatioConst):
-			if data != "" {
-				rmdWorkload.Spec.Plugins.Pstate.Ratio = data
-			}
-		case strings.HasSuffix(field, pstateMonitoringConst):
-			if data != "" {
-				rmdWorkload.Spec.Plugins.Pstate.Monitoring = data
-			}
 		}
 
+		containerID := getContainerID(pod, container.Name)
+		coreIDs, err := readCgroupCpuset(podUID, containerID)
+		if err != nil {
+			logger.Error(err, "failed to retrieve cpuset from cgroups")
+			return nil, err
+		}
+		if len(coreIDs) == 0 {
+			logger.Info("cpuset not found in cgroups for container")
+			return nil, nil
+		}
+
+		rmdWorkload := &intelv1alpha1.RmdWorkload{}
+		// Create workload name. Naming convention: "<pod-name>-rmd-workload-<container-name>"
+		podName := string(pod.GetObjectMeta().GetName())
+		rmdWorkloadName := fmt.Sprintf("%s%s%s", podName, rmdWorkloadNameConst, container.Name)
+		podNamespace := pod.GetObjectMeta().GetNamespace()
+		if podNamespace == "" {
+			podNamespace = defaultNamespace
+		}
+
+		rmdWorkloadNamespacedName := types.NamespacedName{
+			Name:      rmdWorkloadName,
+			Namespace: podNamespace,
+		}
+
+		rmdWorkload.SetName(rmdWorkloadNamespacedName.Name)
+		rmdWorkload.SetNamespace(rmdWorkloadNamespacedName.Namespace)
+
+		maxCache, err := getMaxCache(&container)
+		if err != nil {
+			return nil, err
+		}
+		rmdWorkload.Spec.Rdt.Cache.Max = maxCache
+		rmdWorkload.Spec.CoreIds = coreIDs
+		rmdWorkload.Spec.Nodes = make([]string, 0)
+		rmdWorkload.Spec.Nodes = append(rmdWorkload.Spec.Nodes, pod.Spec.NodeName)
+
+		workloadData := pod.GetObjectMeta().GetAnnotations()
+		for field, data := range workloadData {
+			if !strings.HasPrefix(field, container.Name) {
+				continue
+			}
+
+			switch {
+			case strings.HasSuffix(field, policyConst):
+				if data != "" {
+					rmdWorkload.Spec.Policy = data
+				}
+			case strings.HasSuffix(field, cacheMinConst):
+				minCache, err := strconv.Atoi(data)
+				if err != nil {
+					continue
+				}
+				rmdWorkload.Spec.Rdt.Cache.Min = minCache
+			case strings.HasSuffix(field, mbaPercentageConst):
+				mbaPercentage, err := strconv.Atoi(data)
+				if err != nil {
+					continue
+				}
+				rmdWorkload.Spec.Rdt.Mba.Percentage = mbaPercentage
+			case strings.HasSuffix(field, mbaMbpsConst):
+				mbaMbps, err := strconv.Atoi(data)
+				if err != nil {
+					continue
+				}
+				rmdWorkload.Spec.Rdt.Mba.Mbps = mbaMbps
+			case strings.HasSuffix(field, pstateRatioConst):
+				if data != "" {
+					rmdWorkload.Spec.Plugins.Pstate.Ratio = data
+				}
+			case strings.HasSuffix(field, pstateMonitoringConst):
+				if data != "" {
+					rmdWorkload.Spec.Plugins.Pstate.Monitoring = data
+				}
+			}
+
+		}
+		rmdWorkloads = append(rmdWorkloads, rmdWorkload)
 	}
-	return rmdWorkload, nil
+	return rmdWorkloads, nil
 }
 
-func getContainerRequestingCache(pod *corev1.Pod) (*corev1.Container, int) {
+func getContainersRequestingCache(pod *corev1.Pod) []corev1.Container {
+	containersRequestingCache := make([]corev1.Container, 0)
 	for _, container := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
-		for resourceName, limit := range container.Resources.Limits {
+		for resourceName := range container.Resources.Limits {
 			if resourceName.String() == l3Cache {
-				limitInt, err := strconv.Atoi(limit.String())
-				if err != nil {
-					return nil, 0
-				}
-				return &container, limitInt
+				containersRequestingCache = append(containersRequestingCache, container)
 			}
 		}
 	}
-	return nil, 0
+	return containersRequestingCache
+}
+
+func getMaxCache(container *corev1.Container) (int, error) {
+	for resourceName, limit := range container.Resources.Limits {
+		if resourceName.String() == l3Cache {
+			limitInt, err := strconv.Atoi(limit.String())
+			if err != nil {
+				return 0, err
+			}
+			return limitInt, nil
+		}
+	}
+	return 0, nil
 }
 
 func getContainerID(pod *corev1.Pod, containerName string) string {

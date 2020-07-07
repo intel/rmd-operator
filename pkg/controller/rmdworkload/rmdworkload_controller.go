@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	rmdWorkloadNameConst = "rmd-workload-"
+	rmdWorkloadNameConst = "-rmd-workload-"
 	rmdPodNameConst      = "rmd-"
 )
 
@@ -337,10 +337,10 @@ func (r *ReconcileRmdWorkload) updateWorkload(address string, rmdWorkload *intel
 func (r *ReconcileRmdWorkload) deletePod(rmdWorkloadName string, namespace string) error {
 	logger := log.WithName("deletePod")
 
-	podName := strings.TrimPrefix(rmdWorkloadName, rmdWorkloadNameConst)
+	nameSlice := strings.Split(rmdWorkloadName, rmdWorkloadNameConst)
 	podNamespacedName := types.NamespacedName{
 		Namespace: namespace,
-		Name:      podName,
+		Name:      nameSlice[0],
 	}
 	pod := &corev1.Pod{}
 
