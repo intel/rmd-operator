@@ -4,11 +4,11 @@ metadata:
   name: rmdworkload-guaranteed-cache-mba
 spec:
   # Add fields here
-  coreIds: ["5"]
+  coreIds: ["0-3"]
   rdt:
     cache:
       max: 2
       min: 2
     mba:
-      percentage: 10      
-  nodes: ["silpixa00400471"] 
+      percentage: 50      
+  nodes: ["worker-node-1","worker-node-2"] 

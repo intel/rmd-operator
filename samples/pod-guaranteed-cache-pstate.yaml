@@ -1,17 +1,18 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  generateName: guaranteed-cache-pstate-pod-
-  labels:
-    name: nginx
+  generateName: pod-guaranteed-cache-pstate-
   annotations:
-    nginx1_cache_min: "2"
-    nginx1_pstate_ratio: "1.5"
-    nginx1_pstate_monitoring: "on"
+    container1_cache_min: "2"
+    container1_pstate_ratio: "1.5"
+    container1_pstate_monitoring: "on"
 spec:
   containers:
-  - name: nginx1
-    image: nginx
+  - name: container1
+    image: clearlinux/os-core:latest
+    # keep container alive with sleep infinity 
+    command: [ "sleep" ]
+    args: [ "infinity" ]
     resources:
       requests:
         memory: "64Mi"
