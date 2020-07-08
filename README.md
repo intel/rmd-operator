@@ -76,31 +76,73 @@ The automatic configuration approach is described [later](https://github.com/int
 See `samples` directory for RmdWorkload templates.
 
 ##### Cache
-See `samples/rmd-workload-guaranteed-cache.yaml`
+See `samples/rmdworkload-guaranteed-cache.yaml`
 ````yaml
 apiVersion: intel.com/v1alpha1
 kind: RmdWorkload
 metadata:
     name: rmdworkload-guaranteed-cache
 spec:
-    coreIds: ["0","1","2","3"]
-    cache:
-        max: 2
-        min: 2
+    coreIds: ["0-3","6","8"]
+    rdt:
+        cache:
+            max: 2
+            min: 2
     nodes: ["worker-node-1", "worker-node-2"]
 ````
-This workload requests cache from the guaranteed group for CPUs 0 to 3 on nodes "worker-node-1" and "worker-node-2". See [intel/rmd](https://github.com/intel/rmd#cache-poolsgroups) for details on cache pools/groups.
+This workload requests cache from the guaranteed group for CPUs 0 to 3, 6 and 8 on nodes "worker-node-1" and "worker-node-2". See [intel/rmd](https://github.com/intel/rmd#cache-poolsgroups) for details on cache pools/groups.
+
 **Note**: Replace "worker-node-1" and "worker-node-2" in *nodes* field with the actual node name(s) you wish to target with your RmdWorkload spec. 
 
-Creating this workload is the equivalent of: 
+Creating this workload is the equivalent of running the following command for each node: 
 ````
 $ curl -H "Content-Type: application/json" --request POST --data \
-         '{"core_ids":["0","1","2","3"],
-           "cache" : {"max": 2, "min": 2 } }' \
-         https://hostname:port/v1/workloads
+        '{"core_ids":["0","1","2","3","6","8"],
+            "rdt" : { 
+                "cache" : {"max": 2, "min": 2 }
+            }    
+        }' \
+        https://hostname:port/v1/workloads
 ````
+##### Memory Bandwidth Allocation (MBA)
 
+**Note:** MBA can only be requested **with** guaranteed cache. See [intel/rmd](https://github.com/intel/rmd) for more information on MBA.
+
+See `samples/rmdworkload-guaranteed-cache-mba.yaml`
+````yaml
+apiVersion: intel.com/v1alpha1
+kind: RmdWorkload
+metadata:
+    name: rmdworkload-guaranteed-cache-mba
+spec:
+    coreIds: ["0-3"]
+    rdt:
+        cache:
+            max: 2
+            min: 2
+        mba:
+            percentage: 50
+    nodes: ["worker-node-1", "worker-node-2"]
+````
+This workload requests cache from the guaranteed group for CPUs 0 to 3 on nodes "worker-node-1" and "worker-node-2" while also assigning 50% MBA to those CPUs. See [intel/rmd](https://github.com/intel/rmd#cache-poolsgroups) for details on cache pools/groups.
+
+**Note**: Replace "worker-node-1" and "worker-node-2" in *nodes* field with the actual node name(s) you wish to target with your RmdWorkload spec. 
+
+Creating this workload is the equivalent of running the follwing command for each node: 
+````
+$ curl -H "Content-Type: application/json" --request POST --data \
+        '{"core_ids":["0","1","2","3"],
+            "rdt" : { 
+                "cache" : {"max": 2, "min": 2 }
+                "mba" : {"percentage": 50 }
+            }    
+        }' \
+        https://hostname:port/v1/workloads
+````
 ##### P-State
+
+**Note:** P-State settings are only configurable if the [RMD P-State plugin has been loaded](https://github.com/intel/rmd/blob/master/docs/ConfigurationGuide.md#pstate-section).  
+
 See `samples/rmd-workload-guaranteed-cache-pstate.yaml`
 ````yaml
 apiVersion: intel.com/v1alpha1
@@ -108,29 +150,36 @@ kind: RmdWorkload
 metadata:
     name: rmdworkload-guaranteed-cache-pstate
 spec:
-    coreIds: ["4","5","6","7"]
-    cache:
-        max: 2
-        min: 2
-    pstate:
-        ratio: "3.0"
-        monitoring: "on"
+    coreIds: ["4-7"]
+    rdt:
+        cache:
+            max: 2
+            min: 2
+    plugins:        
+        pstate:
+            ratio: "3.0"
+            monitoring: "on"
     nodes: ["worker-node-1", "worker-node-2"]
 ````
 This workload expands on the previous example with manually specified parameters with P-State plugin enabled. 
 
-Creating this workload is the equivalent of: 
+Creating this workload is the equivalent of running the following command for each node: 
 ````
 $ curl -H "Content-Type: application/json" --request POST --data \
-         '{"core_ids":["4","5","6","7"],
-           "cache" : {"max": 2, "min": 2 } }' \
-           "pstate" : {"ratio": 3.0, "monitoring" : "on"} }' \
-         https://hostname:port/v1/workloads
+        '{"core_ids":["4","5","6","7"],
+            "rdt": {         
+                "cache" : {"max": 2, "min": 2 }
+            }
+            "plugins" : {
+                "pstate" : {"ratio": 3.0, "monitoring" : "on"}
+            }
+       }' \
+       https://hostname:port/v1/workloads
 ````
 
 ##### Create RmdWorkload
 
-`kubectl create -f samples/rmd-workload-guaranteed-cache.yaml`
+`kubectl create -f samples/rmdworkload-guaranteed-cache.yaml`
 
 
 ##### List RmdWorkloads
@@ -150,23 +199,22 @@ Spec:
     Max:  2
     Min:  2
   Core Ids:
-    0
-    1
-    2
-    3
+    0-3
+    6
+    8
   Nodes:
     worker-node-1
     worker-node-2
 Status:
   Workload States:
     worker-node-1:
-      Cos Name:  0_1_2_3-guarantee
-      Id:        2
+      Cos Name:  0-3_6_8-guarantee
+      Id:        1
       Response:  Success: 200
       Status:    Successful
     worker-node-2:
-      Cos Name:  0_1_2_3-guarantee
-      Id:        2
+      Cos Name:  0-3_6_8-guarantee
+      Id:        1
       Response:  Success: 200
       Status:    Successful
 ````
@@ -175,11 +223,11 @@ This displays the RmdWorkload object including the spec as defined above and the
 ##### Delete RmdWorkload
 When the user deletes an RmdWorkload object, a delete request is sent to the RMD API on every RMD instance on which that RmdWorkload is configured.
 
-`kubectl delete rmdworkload rmd-workload-guaranteed-cache`
+`kubectl delete rmdworkload rmdworkload-guaranteed-cache`
 
 Note: If the user only wishes to delete the RmdWorkload from a specific node, that node should be removed from the RmdWorkload spec's "nodes" field and then apply the RmdWorkload object.
 
-`kubectl apply -f samples/rmd-workload-guaranteed-cache.yaml`
+`kubectl apply -f samples/rmdworkload-guaranteed-cache.yaml`
 
 ### RmdNodeState
 The RmdNodeState custom resource is created for each node in the cluster which has RMD running. The purpose of this object is to allow the user to view all running workloads on a particular node at any given time.
@@ -205,16 +253,16 @@ Status:
     rmdworkload-guaranteed-cache:
       Cache Max:  2
       Cache Min:  2
-      Core IDs:   0,1,2,3
-      Cos Name:   0_1_2_3-guarantee
+      Core IDs:   0-3,6,8
+      Cos Name:   0-3_6_8-guarantee
       ID:         1
       Origin:     REST
       Status:     Successful
     rmdworkload-guaranteed-cache-pstate:
       Cache Max:  2
       Cache Min:  2
-      Core IDs:   4,5,6,7
-      Cos Name:   4_5_6_7-guarantee
+      Core IDs:   4-7
+      Cos Name:   4-7-guarantee
       ID:         2
       Origin:     REST
       Status:     Successful
@@ -235,24 +283,25 @@ It is then the responsiblity of the operator and the node agent to do the follow
 The following criteria must be met in order for the operator to succesfully create an RmdWorkload for a container based on the pod spec.
 *  The container must request extended resource `intel.com/l3_cache_ways`. 
 *  The container must also [request exclusive CPUs from CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy).
-*  Pod annotations pertaining to the container requesting cache ways must be prefixed with that container's name. See example and table below.
+*  Pod annotations pertaining to the container requesting cache ways must be prefixed with that container's name. See example and [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
 
-### Example
+### Example: Single Container
 See `samples/pod-guaranteed-cache.yaml`
 
 ````yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  generateName: guaranteed-cache-pod-
-  labels:
-    name: nginx
+  name: pod-guaranteed-cache
   annotations:
-    nginx1_cache_min: "2"
+    container1_cache_min: "2"
 spec:
   containers:
-  - name: nginx1
-    image: nginx
+  - name: container1
+    image: clearlinux/os-core:latest
+    # keep container alive with sleep infinity
+    command: [ "sleep" ]
+    args: [ "infinity" ]
     resources:
       requests:
         memory: "64Mi"
@@ -264,67 +313,201 @@ spec:
         intel.com/l3_cache_ways: 2
 ````
 This pod spec has one container requesting 3 exclusive CPUs and 2 cache ways. The number of cache ways requested is also interpreted as the value for `max cache` for the RmdWorkload.
-The `min cache` value is specified in the pod annotations. The naming convention for RMD workload related annotations **must** follow the table below.
+The `min cache` value is specified in the pod annotations. The naming convention for RMD workload related annotations **must** follow the [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
 
-### Pod Annotations Naming Convention
-**Note**: Annotations **must** be prefixed with the relevant container name as shown below.
-|  Specification | Container Name | Required Annotation Name |
-| ------ | ------ | ------ |
-| Min Cache | nginx1 | nginx1_cache_min |
-| Policy | nginx1 | nginx1_policy |
-| P-State Ratio | nginx1 | nginx1_pstate_ratio |
-| P-State Monitoring | nginx1 | nginx1_pstate_monitoring |
-
-Failure to follow the provided annotation naming convention will result in failure to create the desired workload. 
+This pod will trigger the operator to automatically create an RmdWorkload for `container1` called `pod-guaranteed-cache-rmdworkload-container1`
 
 #### Create Pod
 `kubectl create -f sample/pod-guaranteed-cache.yaml`
 
 #### Display RmdWorkload
-If successful, the RmdWorkload will be created with the naming convention `rmd-workload-<pod-name>`
+If successful, the RmdWorkload will be created with the naming convention `<pod-name>-rmd-workload-<container-name>`
 
-`kubectl describe rmdworkload rmd-workload-guaranteed-cache-pod-86676`
+`kubectl describe rmdworkload pod-guaranteed-cache-rmdworkload-container1`
 
 ````
-Name:         rmd-workload-guaranteed-cache-pod-86676                                                    
-Namespace:    default                                                                                    
-API Version:  intel.com/v1alpha1                                                                         
-Kind:         RmdWorkload                                                                                
+Name:         pod-guaranteed-cache-rmd-workload-container1
+Namespace:    default
+API Version:  intel.com/v1alpha1
+Kind:         RmdWorkload
 Spec:
-  Cache:
-    Max:  2
-    Min:  2
   Core Ids:
     1
     2
     49
   Nodes:
     worker-node-1
+  Plugins:
+    Pstate:
+      Monitoring:
+      Ratio:
   Policy:
-  Pstate:
-    Monitoring:
-    Ratio:
+  Rdt:
+    Cache:
+      Max:  2
+      Min:  2
+    Mba:
+      Mbps: 0
+      Percentage:  0
 Status:
   Workload States:
     worker-node-1:
       Cos Name:  1_2_49-guarantee
-      Id:        3
+      Id:        22
       Response:  Success: 200
       Status:    Successful
-````
-
+`````
 This output displays the RmdWorkload which has been created succesfully based on the pod spec created above.
 Note that CPUs 1,2 and 49 have been allocated to the container by the CPU Manager. As this RmdWorkload was created automatically via the pod spec, **the user has no control over which CPUs are used by the container**. 
 In order to explicitly define which CPUs are to be allocated cache ways, the RmdWorkload must be created directly via the RmdWorkload spec and not the pod spec.
 
+### Example: Multiple Containers
+See `samples/pod-multi-guaranteed-cache-mba.yaml`
+
+````yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-multi-guaranteed-cache-mba
+  annotations:
+    container1_cache_min: "2"
+    container2_cache_min: "2"
+    container2_mba_percentage: "50"
+spec:
+  containers:
+  - name: container1
+    image: clearlinux/os-core:latest
+    # keep container alive with sleep infinity
+    command: [ "sleep" ]
+    args: [ "infinity" ]
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: 2
+        intel.com/l3_cache_ways: 2
+      limits:
+        memory: "64Mi"
+        cpu: 2
+        intel.com/l3_cache_ways: 2
+  - name: container2
+    image: clearlinux/os-core:latest
+    # keep container alive with sleep infinity
+    command: [ "sleep" ]
+    args: [ "infinity" ]
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: 2
+        intel.com/l3_cache_ways: 2
+      limits:
+        memory: "64Mi"
+        cpu: 2
+        intel.com/l3_cache_ways: 2
+````
+This pod spec has two container requesting 2 exclusive CPUs and 2 cache ways. The number of cache ways requested is also interpreted as the value for `max cache` for the RmdWorkload.
+The `min cache` values are specified for each container by prefixing the container name to the pod annotations.
+The `mba_percentage` value is also specified for `container2` in the pod annotations.
+The naming convention for RMD workload related annotations **must** follow the [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
+
+This pod will trigger the operator to automatically create **two** RmdWorkloads. One for `container1` called `pod-multi-guaranteed-cache-mba-rmdworkload-container1` and one for `container2` called `pod-multi-guaranteed-cache-mba-rmdworkload-container2` 
+ 
+#### Create Pod
+`kubectl create -f sample/pod-multi-guaranteed-cache-mba.yaml`
+
+#### Display RmdWorkloads
+If successful, the RmdWorkloads will be created with the naming convention `<pod-name>-rmd-workload-<container-name>`
+ 
+`kubectl describe rmdworkload pod-guaranteed-cache-rmdworkload-container1`
+
+````
+Name:         pod-multi-guaranteed-cache-mba-rmd-workload-container1
+Namespace:    default
+API Version:  intel.com/v1alpha1
+Kind:         RmdWorkload
+Spec:
+  Core Ids:
+    1
+    49
+  Nodes:
+    worker-node-1
+  Plugins:
+    Pstate:
+      Monitoring:
+      Ratio:
+  Policy:
+  Rdt:
+    Cache:
+      Max:  2
+      Min:  2
+    Mba:
+      Mbps: 0
+      Percentage:  0
+Status:
+  Workload States:
+    worker-node-1:
+      Cos Name:  1_49-guarantee
+      Id:        23
+      Response:  Success: 200
+      Status:    Successful
+
+`````
+This output displays the RmdWorkload created succesfully for `container1` based on the pod spec created above.
+
+`kubectl describe rmdworkload pod-guaranteed-cache-rmdworkload-container2`
+
+````
+Name:         pod-multi-guaranteed-cache-mba-9xhxt-rmd-workload-container2
+Namespace:    default
+API Version:  intel.com/v1alpha1
+Kind:         RmdWorkload
+Spec:
+  Core Ids:
+    2
+    50
+  Nodes:
+    worker-node-1
+  Plugins:
+    Pstate:
+      Monitoring:
+      Ratio:
+  Policy:
+  Rdt:
+    Cache:
+      Max:  2
+      Min:  2
+    Mba:
+      Mbps: 0 
+      Percentage:  50
+Status:
+  Workload States:
+    worker-node-1:
+      Cos Name:  2_50-guarantee
+      Id:        24
+      Response:  Success: 200
+      Status:    Successful
+````
+This output displays the RmdWorkload created succesfully for `container2` based on the pod spec created above.
+
+### Pod Annotaions Naming Convention
+**Note**: Annotations **must** be prefixed with the relevant container name as shown below.
+|  Specification | Container Name | Required Annotaion Name |
+| ------ | ------ | ------ |
+| Cache Minimum | container1 | container1_cache_min |
+| Policy | container1 | container1_policy |
+| P-State Ratio | container2 | container2_pstate_ratio |
+| P-State Monitoring | test-container | test-container_pstate_monitoring |
+| MBA Percentage | test-container-1 | test-container-1_mba_percentage |
+| MBA Mbps | test-container2 | test-container2_mba_mbps |
+
+Failure to follow the provided annotation naming convention will result in failure to create the desired workload. 
+
 ### Delete Pod and RmdWorkload
-When an RmdWorkload is created by the operator based on a pod spec, that pod object becomes the owner of the RmdWorkload object it creates. Therefore when a pod that owns an RmdWorkload is deleted, its RmdWorkload child is automatically garbage collected and thus removed from RMD.
+When an RmdWorkload is created by the operator based on a pod spec, that pod object becomes the owner of the RmdWorkload object it creates. Therefore when a pod that owns an RmdWorkload (or multiple RmdWorkloads) is deleted, all of its RmdWorkload children are automatically garbage collected and thus removed from RMD.
 
 `kubectl delete pod rmd-workload-guaranteed-cache-pod-86676`
 
 ### Limitations in Creating RmdWorkloads via Pod Spec
-*  Only one container per pod may request l3 cache ways.
-*  Automatic configuration is only achievable with the native Kubernetes CPU Manager static policy.
+*  Automatic configuration is only achievalbe with the native Kubernetes CPU Manager static policy.
 *  The user has no control over which CPUs are configured with the automatically created RmdWorkload policy as the CPU Manager is in charge of CPU allocation.
 
 
