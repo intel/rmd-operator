@@ -4,8 +4,8 @@ metadata:
   name: rmdworkload-besteffort
 spec:
   # Add fields here
-  coreIds: ["0","1","2","3"]
+  coreIds: ["0-3"]
   cache:
     max: 2
     min: 1
-  nodes: ["example-node-1","example-node-2"] 
+  nodes: ["worker-node-1","worker-node-2"] 
