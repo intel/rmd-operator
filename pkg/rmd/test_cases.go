@@ -14,8 +14,8 @@ type rmdWorkloadTestCase struct {
 
 func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wlds := make([]*rmdtypes.RDTWorkLoad, 0)
-	wl1 := &rmdtypes.RDTWorkLoad{}
 
+	wl1 := &rmdtypes.RDTWorkLoad{}
 	wl1.UUID = "rmd-workload-pod-1"
 	max1 := uint32(2)
 	wl1.Rdt.Cache.Max = &max1
@@ -29,6 +29,8 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wl2.Rdt.Cache.Max = &max2
 	min2 := uint32(1)
 	wl2.Rdt.Cache.Min = &min2
+	mbaPercent2 := uint32(50)
+	wl2.Rdt.Mba.Percentage = &mbaPercent2
 	wlds = append(wlds, wl2)
 
 	wl3 := &rmdtypes.RDTWorkLoad{}
@@ -37,6 +39,8 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wl3.Rdt.Cache.Max = &max3
 	min3 := uint32(1)
 	wl3.Rdt.Cache.Min = &min3
+	mbaMbps3 := uint32(100)
+	wl3.Rdt.Mba.Mbps = &mbaMbps3
 	wlds = append(wlds, wl3)
 
 	wl4 := &rmdtypes.RDTWorkLoad{}
@@ -45,6 +49,10 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wl4.Rdt.Cache.Max = &max4
 	min4 := uint32(2)
 	wl4.Rdt.Cache.Min = &min4
+	mbaPercent4 := uint32(50)
+	wl4.Rdt.Mba.Percentage = &mbaPercent4
+	mbaMbps4 := uint32(100)
+	wl4.Rdt.Mba.Mbps = &mbaMbps4
 	wl4plugins := make(map[string]map[string]interface{})
 	ratio4 := float64(1.5)
 	wl4pstate := make(map[string]interface{})
@@ -63,6 +71,10 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wl5.Rdt.Cache.Max = &max5
 	min5 := uint32(2)
 	wl5.Rdt.Cache.Min = &min5
+	mbaPercent5 := uint32(25)
+	wl5.Rdt.Mba.Percentage = &mbaPercent5
+	mbaMbps5 := uint32(150)
+	wl5.Rdt.Mba.Mbps = &mbaMbps5
 	wl5plugins := make(map[string]map[string]interface{})
 	ratio5 := float64(1.5)
 	wl5pstate := make(map[string]interface{})
@@ -103,6 +115,9 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 						Max: 2,
 						Min: 1,
 					},
+					Mba: intelv1alpha1.Mba{
+						Percentage: 50,
+					},
 				},
 			},
 		},
@@ -117,6 +132,9 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 						Max: 1,
 						Min: 1,
 					},
+					Mba: intelv1alpha1.Mba{
+						Mbps: 100,
+					},
 				},
 			},
 		},
@@ -130,6 +148,10 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 					Cache: intelv1alpha1.Cache{
 						Max: 2,
 						Min: 2,
+					},
+					Mba: intelv1alpha1.Mba{
+						Percentage: 50,
+						Mbps:       100,
 					},
 				},
 				Plugins: intelv1alpha1.Plugins{
@@ -151,6 +173,10 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 					Cache: intelv1alpha1.Cache{
 						Max: 2,
 						Min: 2,
+					},
+					Mba: intelv1alpha1.Mba{
+						Percentage: 25,
+						Mbps:       150,
 					},
 				},
 				Plugins: intelv1alpha1.Plugins{

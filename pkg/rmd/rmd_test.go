@@ -33,8 +33,9 @@ func TestUpdateNodeStatusWorkload(t *testing.T) {
 			name:     "test case 1",
 			workload: wls[1],
 			expectedMap: intelv1alpha1.WorkloadMap{
-				"Cache Max": "2",
-				"Cache Min": "1",
+				"Cache Max":      "2",
+				"Cache Min":      "1",
+				"MBA Percentage": "50",
 			},
 		},
 		{
@@ -43,6 +44,7 @@ func TestUpdateNodeStatusWorkload(t *testing.T) {
 			expectedMap: intelv1alpha1.WorkloadMap{
 				"Cache Max": "1",
 				"Cache Min": "1",
+				"MBA Mbps":  "100",
 			},
 		},
 		{
@@ -51,6 +53,8 @@ func TestUpdateNodeStatusWorkload(t *testing.T) {
 			expectedMap: intelv1alpha1.WorkloadMap{
 				"Cache Max":          "2",
 				"Cache Min":          "2",
+				"MBA Percentage":     "50",
+				"MBA Mbps":           "100",
 				"P-State Ratio":      "1.500000",
 				"P-State Monitoring": "on",
 			},
@@ -62,6 +66,8 @@ func TestUpdateNodeStatusWorkload(t *testing.T) {
 				"Core IDs":           "0,20",
 				"Cache Max":          "2",
 				"Cache Min":          "2",
+				"MBA Percentage":     "25",
+				"MBA Mbps":           "150",
 				"P-State Ratio":      "1.500000",
 				"P-State Monitoring": "on",
 				"Policy":             "gold",
