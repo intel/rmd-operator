@@ -490,7 +490,7 @@ func TestGetPodAddress(t *testing.T) {
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
-					Namespace: "deafult",
+					Namespace: "default",
 				},
 			},
 			rmdPod: &corev1.Pod{
@@ -523,7 +523,7 @@ func TestGetPodAddress(t *testing.T) {
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
-					Namespace: "deafult",
+					Namespace: "default",
 				},
 			},
 			rmdPod: &corev1.Pod{
@@ -560,7 +560,7 @@ func TestGetPodAddress(t *testing.T) {
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
-					Namespace: "deafult",
+					Namespace: "default",
 				},
 			},
 			rmdPod: &corev1.Pod{
@@ -586,7 +586,7 @@ func TestGetPodAddress(t *testing.T) {
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
-					Namespace: "deafult",
+					Namespace: "default",
 				},
 			},
 			rmdPod: &corev1.Pod{
@@ -616,7 +616,7 @@ func TestGetPodAddress(t *testing.T) {
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
-					Namespace: "deafult",
+					Namespace: "default",
 				},
 			},
 			rmdPod: &corev1.Pod{

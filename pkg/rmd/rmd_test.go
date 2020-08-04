@@ -230,7 +230,7 @@ func TestGetAvailableCacheWays(t *testing.T) {
 		client := NewDefaultOperatorRmdClient()
 		ways, err := client.GetAvailableCacheWays(ts.URL)
 		if err != nil {
-			t.Fatalf("Error occured when calling GetAvailableCacheWays")
+			t.Fatalf("Error occurred when calling GetAvailableCacheWays")
 		}
 		if ways != tc.expectedCacheWays {
 			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.expectedCacheWays, ways)

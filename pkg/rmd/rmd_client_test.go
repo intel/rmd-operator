@@ -259,6 +259,9 @@ func TestNewClient(t *testing.T) {
 	}
 	for _, tc := range tcases {
 		content, err := yaml.Marshal(tc.rmdPod)
+		if err != nil {
+			t.Errorf("error converting pod spec to YAML")
+		}
 		if err := ioutil.WriteFile("./testpod", content, 0666); err != nil {
 			t.Fatalf("error writing to file (%v)", err)
 		}
@@ -423,6 +426,9 @@ func TestIsTLSEnabled(t *testing.T) {
 	}
 	for _, tc := range tcases {
 		content, err := yaml.Marshal(tc.rmdPod)
+		if err != nil {
+			t.Errorf("error converting pod spec to YAML")
+		}
 		if err := ioutil.WriteFile("./testpod", content, 0666); err != nil {
 			t.Fatalf("error writing to file (%v)", err)
 		}
