@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
+	github.com/gojp/goreportcard v0.0.0-20200415071653-59167b516f3f // indirect
 	github.com/intel/rmd v0.0.0-20200420193214-a334deb75fa9
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/spf13/pflag v1.0.5
