@@ -1,4 +1,6 @@
 # Intel RMD Operator
+[![Go Report Card](https://goreportcard.com/badge/github.com/csookarr/rmd-operator)](https://goreportcard.com/report/github.com/csookarr/rmd-operator)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 Kubernetes Operator designed to provision and manage Intel [Resource Management Daemon (RMD)](https://github.com/intel/rmd) instances in a Kubernetes cluster.
 
 ## Prerequisites
