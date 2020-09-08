@@ -34,6 +34,8 @@ Private Key: **build/certs/private/key.pem**
 ### Build
 *Note:* The operator deploys pods with the RMD container. The [Dockerfile](https://github.com/intel/rmd/blob/master/Dockerfile) for this container is located on the [RMD repo](https://github.com/intel/rmd) and is out of scope for this project. 
 
+*Note:* If running behind a proxy server, proxy settings must be configured in the RMD Operator [Dockerfile](https://github.com/intel/rmd-operator/build/Dockerfile#L3). 
+
 The operator supports RMD v0.2 **only**.
 
 The pod spec used by the operator to deploy the RMD container is located at **build/manifests/rmd-pod.yaml**. Alterations to the image name/tag should be made here. 
