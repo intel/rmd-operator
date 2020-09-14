@@ -1,5 +1,7 @@
 .PHONY: all build images clean test manifests
 
+export CC := gcc -std=gnu99 -Wno-error=implicit-function-declaration
+
 all:    format build images
 
 test:
