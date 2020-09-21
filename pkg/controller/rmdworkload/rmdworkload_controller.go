@@ -7,6 +7,7 @@ import (
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
+//	rmdtypes "github.com/intel/rmd/modules/workload/types"	
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -111,30 +112,14 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 	err = r.client.Get(context.TODO(), request.NamespacedName, rmdWorkload)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found
-			for _, rmdNodeState := range rmdNodeStates.Items {
-				namespace := rmdNodeState.GetObjectMeta().GetNamespace()
-				address, err := r.getPodAddress(rmdNodeState.Spec.Node, namespace)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-
-				activeWorkloads, err := r.rmdClient.GetWorkloads(address)
-				if err != nil {
-					reqLogger.Info("Could not GET workloads.", "Error:", err)
-					return reconcile.Result{}, err
-				}
-
-				workload := rmd.FindWorkloadByName(activeWorkloads, request.NamespacedName.Name)
-				if workload.UUID == "" {
-					reqLogger.Info("Workload not found on RMD instance")
-					return reconcile.Result{}, nil
-				}
-				err = r.rmdClient.DeleteWorkload(address, workload.ID)
-				if err != nil {
-					reqLogger.Error(err, "Failed to delete workload from RMD")
-					return reconcile.Result{}, err
-				}
+			// Request object not found (deleted)
+			
+			isDeleted, err := r.findObseleteWorkloads(rmdNodeStates, request)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			if isDeleted == false {
+				fmt.Println("Returned isDeleted is false")
 			}
 			// Return and don't requeue
 			return reconcile.Result{}, nil
@@ -214,10 +199,13 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 				if err != nil {
 					return reconcile.Result{}, err
 				}
-				err = r.rmdClient.DeleteWorkload(address, workload.ID)
+				isDeleted, err := r.rmdClient.DeleteWorkload(address, workload.ID)
 				if err != nil {
 					reqLogger.Error(err, "Failed to delete workload from RMD")
 					return reconcile.Result{}, err
+				}
+				if isDeleted == false {
+					fmt.Println("Workload not deleted")
 				}
 			}
 
@@ -225,6 +213,38 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileRmdWorkload) findObseleteWorkloads (rmdNodeStates *intelv1alpha1.RmdNodeStateList, request reconcile.Request)  (bool, error) {
+	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	var isDeleted bool = false //flag to check if obselete workoad has been deleted
+
+	for _, rmdNodeState := range rmdNodeStates.Items {
+		namespace := rmdNodeState.GetObjectMeta().GetNamespace()
+		address, err := r.getPodAddress(rmdNodeState.Spec.Node, namespace)
+		if err != nil {
+			return isDeleted, err
+		}
+
+		activeWorkloads, err := r.rmdClient.GetWorkloads(address)
+		if err != nil {
+			reqLogger.Info("Could not GET workloads.", "Error:", err)
+			return isDeleted, err
+		}
+
+		workload := rmd.FindWorkloadByName(activeWorkloads, request.NamespacedName.Name) 
+		if workload.UUID == "" { //this should cause reconcile.Result{} to be returned in Reconcile() -> make an error?
+			reqLogger.Info("Workload not found on RMD instance")
+			return isDeleted, nil
+		}
+
+		isDeleted, err = r.rmdClient.DeleteWorkload(address, workload.ID)
+		if err != nil {
+			reqLogger.Error(err, "Failed to delete workload from RMD")
+			return isDeleted, err
+		}			
+	}
+	return isDeleted, nil	
 }
 
 // getPodAddress fetches the IP address and port of the desired service.
@@ -260,7 +280,6 @@ func (r *ReconcileRmdWorkload) getPodAddress(nodeName string, namespace string) 
 	}
 	addressPrefix := r.rmdClient.GetAddressPrefix()
 	address := fmt.Sprintf("%s%s%s%d", addressPrefix, podIP, ":", rmdPod.Spec.Containers[0].Ports[0].ContainerPort)
-
 	return address, nil
 
 }

@@ -473,6 +473,437 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 	}
 }
 
+func TestFindObseleteWorkloads(t *testing.T) {
+	tcases := []struct {
+		name 					string
+		rmdNodeStateList		*intelv1alpha1.RmdNodeStateList
+		request					reconcile.Request
+		rmdWorkload 			*intelv1alpha1.RmdWorkload
+		rmdPods					*corev1.PodList
+		getWorkloadsResponse	[]rmdtypes.RDTWorkLoad
+		deleteExpected			bool
+		expectedErr 			bool
+	}{
+	{
+				name:	"test case 1 - 1 obselete workload only",
+				rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
+					Items: []intelv1alpha1.RmdNodeState{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "rmd-node-state-example-node.com",
+								Namespace: "default",
+							},
+							Spec: intelv1alpha1.RmdNodeStateSpec{
+								Node: "example-node.com",
+							},
+						},
+					},
+				},
+				request:	reconcile.Request{
+					types.NamespacedName {
+						Namespace:	"default",
+						Name:	"rmd-workload-1",
+					},
+				},
+				rmdWorkload: &intelv1alpha1.RmdWorkload{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "rmd-workload-1",
+						Namespace: "default",
+					},
+					Spec: intelv1alpha1.RmdWorkloadSpec{
+						Nodes: []string{"example-node.com"},
+					},
+				},
+				rmdPods: &corev1.PodList{
+					Items: []corev1.Pod{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "rmd-example-node.com",
+								Namespace: "default",
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Ports: []corev1.ContainerPort{
+											{
+												ContainerPort: 8080,
+											},
+										},
+									},
+								},
+							},
+							Status: corev1.PodStatus{
+								PodIPs: []corev1.PodIP{
+									{
+										IP: "127.0.0.1",
+									},
+								},
+							},
+						},
+					},
+				},
+				getWorkloadsResponse: []rmdtypes.RDTWorkLoad{
+					{
+						UUID:   "rmd-workload-1",
+						ID:		"1",
+					},
+				},
+				deleteExpected: true,
+				expectedErr: false,
+		},
+	{
+				name:	"test case 2 - 3 workloads, 1 obselete",
+				rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
+					Items: []intelv1alpha1.RmdNodeState{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "rmd-node-state-example-node.com",
+								Namespace: "default",
+							},
+							Spec: intelv1alpha1.RmdNodeStateSpec{
+								Node: "example-node.com",
+							},
+						},
+					},
+				},
+				request:	reconcile.Request{
+					types.NamespacedName {
+						Namespace:	"default",
+						Name:	"rmd-workload-1",
+					},
+				},
+				rmdWorkload: &intelv1alpha1.RmdWorkload{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "rmd-workload-1",
+						Namespace: "default",
+					},
+					Spec: intelv1alpha1.RmdWorkloadSpec{
+						Nodes: []string{"example-node.com"},
+					},
+				},
+				rmdPods: &corev1.PodList{
+					Items: []corev1.Pod{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "rmd-example-node.com",
+								Namespace: "default",
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Ports: []corev1.ContainerPort{
+											{
+												ContainerPort: 8080,
+											},
+										},
+									},
+								},
+							},
+							Status: corev1.PodStatus{
+								PodIPs: []corev1.PodIP{
+									{
+										IP: "127.0.0.1",
+									},
+								},
+							},
+						},
+					},
+				},
+				getWorkloadsResponse: []rmdtypes.RDTWorkLoad{
+					{
+						UUID:   "rmd-workload-1",
+						ID:		"1",
+					},
+					{
+						UUID:   "rmd-workload-2",
+						ID:		"2",
+					},
+					{
+						UUID:   "rmd-workload-3",
+						ID:		"3",
+					},
+				},
+				deleteExpected: true,
+				expectedErr: false,
+		},		
+		{	
+			name:	"test case 3 - no obselete workload",
+			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
+				Items: []intelv1alpha1.RmdNodeState{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-node-state-example-node.com",
+							Namespace: "default",
+						},
+						Spec: intelv1alpha1.RmdNodeStateSpec{
+							Node: "example-node.com",
+						},
+					},
+				},
+			},
+			request:	reconcile.Request{
+				types.NamespacedName {
+					Namespace:	"",
+					Name:	"",
+				},
+			},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-1",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					Nodes: []string{"example-node.com"},
+				},
+			},
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+				},
+			},
+			getWorkloadsResponse: []rmdtypes.RDTWorkLoad{
+				{
+					UUID:   "rmd-workload-1",
+					ID:		"1",
+				},
+				{
+					UUID:   "rmd-workload-2",
+					ID:		"2",
+				},
+				{
+					UUID:   "rmd-workload-3",
+					ID:		"3",
+				},
+			},
+			deleteExpected: false,
+			expectedErr: false,
+		},	
+		{	
+			name:	"test case 4 - no pod IP found",
+			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
+				Items: []intelv1alpha1.RmdNodeState{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-node-state-example-node.com",
+							Namespace: "default",
+						},
+						Spec: intelv1alpha1.RmdNodeStateSpec{
+							Node: "example-node.com",
+						},
+					},
+				},
+			},
+			request:	reconcile.Request{
+				types.NamespacedName {
+					Namespace:	"default",
+					Name:	"rmd-workload-1",
+				},
+			},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-1",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					Nodes: []string{"example-node.com"},
+				},
+			},
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{},
+						},
+					},
+				},
+			},
+			getWorkloadsResponse: []rmdtypes.RDTWorkLoad{
+				{
+					UUID:   "rmd-workload-1",
+					ID:		"1",
+				},
+				{
+					UUID:   "rmd-workload-2",
+					ID:		"2",
+				},
+			},
+			deleteExpected: false,
+			expectedErr: true,
+		},	
+		{
+			name:	"test case 5 - Pod IP different to listener created",
+			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
+				Items: []intelv1alpha1.RmdNodeState{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-node-state-example-node.com",
+							Namespace: "default",
+						},
+						Spec: intelv1alpha1.RmdNodeStateSpec{
+							Node: "example-node.com",
+						},
+					},
+				},
+			},
+			request:	reconcile.Request{
+				types.NamespacedName {
+					Namespace:	"default",
+					Name:	"rmd-workload-1",
+				},
+			},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-1",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					Nodes: []string{"example-node.com"},
+				},
+			},
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.2",
+								},
+							},
+						},
+					},
+				},
+			},
+			getWorkloadsResponse: []rmdtypes.RDTWorkLoad{
+				{
+					UUID:   "rmd-workload-1",
+					ID:		"1",
+				},
+				{
+					UUID:   "rmd-workload-2",
+					ID:		"2",
+				},
+			},
+			deleteExpected: false,
+			expectedErr: true,
+		},						
+	}
+	for _, tc := range tcases {
+		r, err := createReconcileRmdWorkloadObject(tc.rmdWorkload)
+		if err != nil {
+			t.Fatalf("error creating ReconcileRmdWorkload object: (%v)", err)
+		}
+				
+		
+		// create a listener with the desired port.
+		address := "127.0.0.1:8080"
+		l, err := net.Listen("tcp", address)
+		if err != nil {
+			t.Fatalf("Failed to create listener")
+		}
+		
+		mux := http.NewServeMux()
+		mux.HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "GET" {
+				b, err := json.Marshal(tc.getWorkloadsResponse)
+				if err == nil {
+					fmt.Fprintln(w, string(b[:]))
+				}
+			} else {
+				if err == nil {
+					fmt.Fprintln(w, "ok")
+				}
+			}
+		}))
+		
+		ts := httptest.NewUnstartedServer(mux)
+		
+		ts.Listener.Close()
+		ts.Listener = l
+		
+		// Start the server.
+		ts.Start()
+
+		for i := range tc.rmdNodeStateList.Items {
+			err = r.client.Create(context.TODO(), &tc.rmdNodeStateList.Items[i])
+			if err != nil {
+				t.Fatalf("Failed to create rmd node states")
+			}
+		}
+		for i := range tc.rmdPods.Items {
+			err = r.client.Create(context.TODO(), &tc.rmdPods.Items[i])
+			if err != nil {
+				t.Fatalf("Failed to create dummy rmd pod")
+			}
+		}
+		
+		returnedErr := false
+		isDeleted, err := r.findObseleteWorkloads(tc.rmdNodeStateList, tc.request)
+		if err != nil {
+			returnedErr = true
+		}
+		if tc.deleteExpected != isDeleted {
+			t.Errorf("%v failed: Delete expected?  %v, Workload deleted?  %v\n", tc.name, tc.deleteExpected, isDeleted)
+		}
+		if tc.expectedErr != returnedErr {
+			t.Errorf("%v failed: Expected error: %v, Error gotten: %v\n", tc.name, tc.expectedErr, returnedErr)
+		}
+		ts.Close()
+	}
+}
+
 func TestGetPodAddress(t *testing.T) {
 	tcases := []struct {
 		name            string
