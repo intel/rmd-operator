@@ -350,30 +350,28 @@ func (rc *OperatorRmdClient) PatchWorkload(workloadCR *intelv1alpha1.RmdWorkload
 }
 
 // DeleteWorkload deletes workload from RMD by workload ID
-func (rc *OperatorRmdClient) DeleteWorkload(address string, workloadID string) (bool, error) {
+func (rc *OperatorRmdClient) DeleteWorkload(address string, workloadID string) error {
 	deleteFailedErr := errors.NewServiceUnavailable("Response status code error")
-	var isDeleted bool = false //flag to check if workload has successfully been deleted 
 	httpString := fmt.Sprintf("%s%s%s", address, "/v1/workloads/", workloadID)
 	req, err := http.NewRequest(deleteConst, httpString, nil)
 	if err != nil {
-		return isDeleted, err
+		return err
 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := rc.client.Do(req)
 	if err != nil {
-		return isDeleted, err
+		return err
 	}
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
 
 	if resp.StatusCode != patchedResponse {
-		return isDeleted, deleteFailedErr
+		return deleteFailedErr
 	}
 
 	defer resp.Body.Close()
-	isDeleted = true
-	return isDeleted, nil
+	return nil
 }
 
 // FindWorkloadByName discovers a particular workload running on RMD by name/UUID
