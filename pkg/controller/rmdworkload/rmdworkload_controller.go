@@ -133,7 +133,7 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 	// Create a map of node state namespaces for RMD pod discovery.
 	// Nodestates and RMD pods are created with the same namespace by node_controller.
 	// This is the same namespace as the parent node, or default if not set.
-	err = r.alterWorkloads(request, rmdNodeStates, rmdWorkload)
+	err = r.findWorkloadsToChange(request, rmdNodeStates, rmdWorkload)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -202,7 +202,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 		}
 
 		workload := rmd.FindWorkloadByName(activeWorkloads, request.NamespacedName.Name)
-		if workload.UUID == "" { //this should cause reconcile.Result{} to be returned in Reconcile() -> make an error?
+		if workload.UUID == "" {
 			reqLogger.Info("Workload not found on RMD instance")
 			if len(obseleteWorkloads) == 0 {
 				continue
@@ -215,7 +215,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 }
 
 //function to add/update workloads
-func (r *ReconcileRmdWorkload) alterWorkloads(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) error {
+func (r *ReconcileRmdWorkload) findWorkloadsToChange(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) error {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	nodeNamespaces := make(map[string]string)

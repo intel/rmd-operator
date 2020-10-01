@@ -480,7 +480,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 		request                   reconcile.Request
 		rmdWorkload               *intelv1alpha1.RmdWorkload
 		rmdPods                   *corev1.PodList
-		getWorkloadsResponse      []([]rmdtypes.RDTWorkLoad)
+		getWorkloadsResponse      map[string]([]rmdtypes.RDTWorkLoad)
 		expectedObseleteWorkloads map[string]string
 		expectedErr               bool
 	}{
@@ -542,8 +542,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 					},
 				},
 			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
 					{
 						UUID: "rmd-workload-1",
 						ID:   "1",
@@ -613,8 +613,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 					},
 				},
 			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
 					{
 						UUID: "rmd-workload-1",
 						ID:   "1",
@@ -692,8 +692,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 					},
 				},
 			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
 					{
 						UUID: "rmd-workload-1",
 						ID:   "1",
@@ -712,149 +712,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			expectedErr:               false,
 		},
 		{
-			name: "test case 4 - no pod IP found",
-			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
-				Items: []intelv1alpha1.RmdNodeState{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "rmd-node-state-example-node.com",
-							Namespace: "default",
-						},
-						Spec: intelv1alpha1.RmdNodeStateSpec{
-							Node: "example-node.com",
-						},
-					},
-				},
-			},
-			request: reconcile.Request{
-				types.NamespacedName{
-					Namespace: "default",
-					Name:      "rmd-workload-1",
-				},
-			},
-			rmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-1",
-					Namespace: "default",
-				},
-				Spec: intelv1alpha1.RmdWorkloadSpec{
-					Nodes: []string{"example-node.com"},
-				},
-			},
-			rmdPods: &corev1.PodList{
-				Items: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "rmd-example-node.com",
-							Namespace: "default",
-						},
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Ports: []corev1.ContainerPort{
-										{
-											ContainerPort: 8080,
-										},
-									},
-								},
-							},
-						},
-						Status: corev1.PodStatus{
-							PodIPs: []corev1.PodIP{},
-						},
-					},
-				},
-			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
-					{
-						UUID: "rmd-workload-1",
-						ID:   "1",
-					},
-					{
-						UUID: "rmd-workload-2",
-						ID:   "2",
-					},
-				},
-			},
-			expectedObseleteWorkloads: nil,
-			expectedErr:               true,
-		},
-		{
-			name: "test case 5 - Pod IP different to listener created",
-			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
-				Items: []intelv1alpha1.RmdNodeState{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "rmd-node-state-example-node.com",
-							Namespace: "default",
-						},
-						Spec: intelv1alpha1.RmdNodeStateSpec{
-							Node: "example-node.com",
-						},
-					},
-				},
-			},
-			request: reconcile.Request{
-				types.NamespacedName{
-					Namespace: "default",
-					Name:      "rmd-workload-1",
-				},
-			},
-			rmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-1",
-					Namespace: "default",
-				},
-				Spec: intelv1alpha1.RmdWorkloadSpec{
-					Nodes: []string{"example-node.com"},
-				},
-			},
-			rmdPods: &corev1.PodList{
-				Items: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "rmd-example-node.com",
-							Namespace: "default",
-						},
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Ports: []corev1.ContainerPort{
-										{
-											ContainerPort: 8080,
-										},
-									},
-								},
-							},
-						},
-						Status: corev1.PodStatus{
-							PodIPs: []corev1.PodIP{
-								{
-									IP: "127.0.0.2",
-								},
-							},
-						},
-					},
-				},
-			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
-					{
-						UUID: "rmd-workload-1",
-						ID:   "1",
-					},
-					{
-						UUID: "rmd-workload-2",
-						ID:   "2",
-					},
-				},
-			},
-			expectedObseleteWorkloads: nil,
-			expectedErr:               true,
-		},
-		{
-			name: "test case 6 - multiple node states and pods, 1 obselete workload on both nodes",
+			name: "test case 4 - multiple node states and pods, 1 obselete workload on both nodes",
 			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
 				Items: []intelv1alpha1.RmdNodeState{
 					{
@@ -944,8 +802,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 					},
 				},
 			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
 					{
 						UUID: "rmd-workload-1",
 						ID:   "1",
@@ -955,7 +813,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ID:   "2",
 					},
 				},
-				{
+				"127.0.0.5:8085": {
 					{
 						UUID: "rmd-workload-1",
 						ID:   "3",
@@ -973,7 +831,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "test case 7 - multiple node states and pods, 1 obselete workload on one node only",
+			name: "test case 5 - multiple node states and pods, 1 obselete workload on one node only",
 			rmdNodeStateList: &intelv1alpha1.RmdNodeStateList{
 				Items: []intelv1alpha1.RmdNodeState{
 					{
@@ -1063,8 +921,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 					},
 				},
 			},
-			getWorkloadsResponse: []([]rmdtypes.RDTWorkLoad){
-				{
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
 					{
 						UUID: "rmd-workload-1",
 						ID:   "1",
@@ -1074,7 +932,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ID:   "2",
 					},
 				},
-				{
+				"127.0.0.5:8085": {
 					{
 						UUID: "rmd-workload-3",
 						ID:   "3",
@@ -1098,58 +956,46 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			t.Fatalf("error creating ReconcileRmdWorkload object: (%v)", err)
 		}
 
-		// create a listener with the desired port.
-		address1 := "127.0.0.1:8080"
-		l, err := net.Listen("tcp", address1)
-		if err != nil {
-			t.Fatalf("Failed to create listener")
-		}
+		//automatically create listeners
+		ts := make([]*httptest.Server, len(tc.rmdPods.Items))
+		listeners := make([]net.Listener, len(tc.rmdPods.Items))
+		muxes := make([]*http.ServeMux, len(tc.rmdPods.Items))
+		for i := range tc.rmdPods.Items {
+			//get address (i.e. IP and port number)
+			podIP := tc.rmdPods.Items[i].Status.PodIPs[0].IP
+			containerPort := tc.rmdPods.Items[i].Spec.Containers[0].Ports[0].ContainerPort
+			address := fmt.Sprintf("%s:%v", podIP, containerPort)
 
-		address2 := "127.0.0.5:8085"
-		m, err := net.Listen("tcp", address2)
-		if err != nil {
-			t.Fatalf("Failed to create listener")
-		}
-
-		mux1 := http.NewServeMux()
-		mux1.HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "GET" {
-				b, err := json.Marshal(tc.getWorkloadsResponse[0])
-				if err == nil {
-					fmt.Fprintln(w, string(b[:]))
-				}
-			} else {
-				if err == nil {
-					fmt.Fprintln(w, "ok")
-				}
+			// create a listener with the desired port.
+			listeners[i], err = net.Listen("tcp", address)
+			if err != nil {
+				t.Fatalf("Failed to create listener")
 			}
-		}))
 
-		mux2 := http.NewServeMux()
-		mux2.HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "GET" {
-				c, err := json.Marshal(tc.getWorkloadsResponse[1])
-				if err == nil {
-					fmt.Fprintln(w, string(c[:]))
+			//create muxes to handle get requests
+			muxes[i] = http.NewServeMux()
+			muxes[i].HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == "GET" {
+					b, err := json.Marshal(tc.getWorkloadsResponse[address])
+					if err == nil {
+						fmt.Fprintln(w, string(b[:]))
+					}
+				} else {
+					fmt.Println("request not GET request")
+					if err == nil {
+						fmt.Fprintln(w, "ok")
+					}
 				}
-			} else {
-				if err == nil {
-					fmt.Fprintln(w, "ok")
-				}
-			}
-		}))
+			}))
 
-		ts1 := httptest.NewUnstartedServer(mux1)
-		ts2 := httptest.NewUnstartedServer(mux2)
+			ts[i] = httptest.NewUnstartedServer(muxes[i])
 
-		ts1.Listener.Close()
-		ts2.Listener.Close()
-		ts1.Listener = l
-		ts2.Listener = m
+			ts[i].Listener.Close()
+			ts[i].Listener = listeners[i]
 
-		// Start the server.
-		ts1.Start()
-		ts2.Start()
+			// Start the server.
+			ts[i].Start()
+		}
 
 		for i := range tc.rmdNodeStateList.Items {
 			err = r.client.Create(context.TODO(), &tc.rmdNodeStateList.Items[i])
@@ -1175,8 +1021,10 @@ func TestFindObseleteWorkloads(t *testing.T) {
 		if tc.expectedErr != returnedErr {
 			t.Errorf("%v failed: Expected error: %v, Error gotten: %v\n", tc.name, tc.expectedErr, returnedErr)
 		}
-		ts1.Close()
-		ts2.Close()
+		for i := range tc.rmdPods.Items {
+			//Close the listeners
+			ts[i].Close()
+		}
 	}
 }
 
