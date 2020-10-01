@@ -196,6 +196,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 		}
 
 		activeWorkloads, err := r.rmdClient.GetWorkloads(address)
+		fmt.Printf("Active Workoads: %s", address)
 		if err != nil {
 			reqLogger.Info("Could not GET workloads.", "Error:", err)
 			return nil, err
@@ -205,9 +206,10 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 		if workload.UUID == "" { //this should cause reconcile.Result{} to be returned in Reconcile() -> make an error?
 			reqLogger.Info("Workload not found on RMD instance")
 			if len(obseleteWorkloads) == 0 {
-				continue
+					continue
+					//return nil, nil
 			}
-			return obseleteWorkloads, nil
+			return obseleteWorkloads, nil		
 		}
 		obseleteWorkloads[address] = workload.UUID
 	}
