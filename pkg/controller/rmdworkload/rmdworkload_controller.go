@@ -7,7 +7,6 @@ import (
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
-	rmdtypes "github.com/intel/rmd/modules/workload/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,6 +82,13 @@ type ReconcileRmdWorkload struct {
 	scheme    *runtime.Scheme
 }
 
+//targetedNodeInfo is returned by r.findTargetedNodes()
+type targetedNodeInfo struct {
+	nodeName       string
+	rmdAddress     string
+	workloadExists bool
+}
+
 // Reconcile reads that state of the cluster for a RmdWorkload object and makes changes based on the state read
 // and what is in the RmdWorkload.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
@@ -131,32 +137,27 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// Create a map of node state namespaces for RMD pod discovery.
-	// Nodestates and RMD pods are created with the same namespace by node_controller.
-	// This is the same namespace as the parent node, or default if not set.
-	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
-
-	wlsToChange, err := r.findWorkloadsToChange(request, rmdNodeStates, rmdWorkload)
+	// Discover all RMD instances that the reconciled RmdWorkload is targeting.
+	// Add or Update those instances with the reconciled RmdWorkload accordingly
+	targetNodes, err := r.findTargetedNodes(request, rmdNodeStates, rmdWorkload)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	i := 0
-	for address, workload := range wlsToChange {
-		if workload.UUID == "" {
+	for _, node := range targetNodes {
+		if node.workloadExists == false {
 			reqLogger.Info("Workload not found on RMD instance, create.")
-			err := r.addWorkload(address, rmdWorkload, rmdWorkload.Spec.Nodes[i])
+			err := r.addWorkload(node.rmdAddress, rmdWorkload, node.nodeName)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-		} else if workload.UUID == rmdWorkloadName {
+		} else {
 			reqLogger.Info("Workload found on RMD instance, update.")
-			err := r.updateWorkload(address, rmdWorkload, rmdWorkload.Spec.Nodes[i])
+			err := r.updateWorkload(node.rmdAddress, rmdWorkload, node.nodeName)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 		}
-		i++
 	}
 
 	// Perform final check on RMD workloads vs rmdWorkload.Spec.Nodes to find any
@@ -225,10 +226,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 		workload := rmd.FindWorkloadByName(activeWorkloads, request.NamespacedName.Name)
 		if workload.UUID == "" {
 			reqLogger.Info("Workload not found on RMD instance")
-			if len(obseleteWorkloads) == 0 {
-				continue
-			}
-			return obseleteWorkloads, nil
+			continue
 		}
 		obseleteWorkloads[address] = workload.UUID
 	}
@@ -236,10 +234,14 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 }
 
 //function to add/update workloads
-func (r *ReconcileRmdWorkload) findWorkloadsToChange(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) (map[string]*rmdtypes.RDTWorkLoad, error) {
+func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) ([]targetedNodeInfo, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
-	wlsToChange := make(map[string]*rmdtypes.RDTWorkLoad)
+	wlsToChange := make([]targetedNodeInfo, 0)
+
+	// Create a map of node state namespaces for RMD pod discovery.
+	// Nodestates and RMD pods are created with the same namespace by node_controller.
+	// This is the same namespace as the parent node, or default if not set.
 	nodeNamespaces := make(map[string]string)
 	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
 
@@ -262,8 +264,12 @@ func (r *ReconcileRmdWorkload) findWorkloadsToChange(request reconcile.Request, 
 			return nil, err
 		}
 
+		workloadExists := true
 		workload := rmd.FindWorkloadByName(activeWorkloads, rmdWorkloadName)
-		wlsToChange[address] = workload
+		if workload.UUID == "" {
+			workloadExists = false
+		}
+		wlsToChange = append(wlsToChange, targetedNodeInfo{nodeName, address, workloadExists})
 	}
 	return wlsToChange, nil
 }
