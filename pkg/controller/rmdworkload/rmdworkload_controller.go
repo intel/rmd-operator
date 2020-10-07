@@ -7,6 +7,7 @@ import (
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
+	rmdtypes "github.com/intel/rmd/modules/workload/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -133,9 +134,29 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 	// Create a map of node state namespaces for RMD pod discovery.
 	// Nodestates and RMD pods are created with the same namespace by node_controller.
 	// This is the same namespace as the parent node, or default if not set.
-	err = r.findWorkloadsToChange(request, rmdNodeStates, rmdWorkload)
+	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
+
+	wlsToChange, err := r.findWorkloadsToChange(request, rmdNodeStates, rmdWorkload)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	i := 0
+	for address, workload := range wlsToChange {
+		if workload.UUID == "" {
+			reqLogger.Info("Workload not found on RMD instance, create.")
+			err := r.addWorkload(address, rmdWorkload, rmdWorkload.Spec.Nodes[i])
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		} else if workload.UUID == rmdWorkloadName {
+			reqLogger.Info("Workload found on RMD instance, update.")
+			err := r.updateWorkload(address, rmdWorkload, rmdWorkload.Spec.Nodes[i])
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		i++
 	}
 
 	// Perform final check on RMD workloads vs rmdWorkload.Spec.Nodes to find any
@@ -215,48 +236,36 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 }
 
 //function to add/update workloads
-func (r *ReconcileRmdWorkload) findWorkloadsToChange(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) error {
+func (r *ReconcileRmdWorkload) findWorkloadsToChange(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) (map[string]*rmdtypes.RDTWorkLoad, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
+	wlsToChange := make(map[string]*rmdtypes.RDTWorkLoad)
 	nodeNamespaces := make(map[string]string)
+	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
+
 	for _, rmdNodeState := range rmdNodeStates.Items {
 		nodeNamespaces[rmdNodeState.Spec.Node] = rmdNodeState.GetObjectMeta().GetNamespace()
 	}
 
-	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
 	// Loop through nodes listed in RmdWorkload Spec, add/update workloads where necessary.
 	for _, nodeName := range rmdWorkload.Spec.Nodes {
 		// Get node service address
 		address, err := r.getPodAddress(nodeName, nodeNamespaces[nodeName])
 		if err != nil {
 			reqLogger.Error(err, "Failed to get pod address")
-			return err
+			return nil, err
 		}
 
 		activeWorkloads, err := r.rmdClient.GetWorkloads(address)
 		if err != nil {
 			reqLogger.Info("Could not GET workloads.", "Error:", err)
-			return err
+			return nil, err
 		}
 
-		//Maybe create an add map and an update map and return whichever one is relevant?
 		workload := rmd.FindWorkloadByName(activeWorkloads, rmdWorkloadName)
-		if workload.UUID == "" {
-			reqLogger.Info("Workload not found on RMD instance, create.")
-			err := r.addWorkload(address, rmdWorkload, nodeName)
-			if err != nil {
-				return err
-			}
-
-		} else if workload.UUID == rmdWorkloadName {
-			reqLogger.Info("Workload found on RMD instance, update.")
-			err := r.updateWorkload(address, rmdWorkload, nodeName)
-			if err != nil {
-				return err
-			}
-		}
+		wlsToChange[address] = workload
 	}
-	return nil
+	return wlsToChange, nil
 }
 
 // getPodAddress fetches the IP address and port of the desired service.
