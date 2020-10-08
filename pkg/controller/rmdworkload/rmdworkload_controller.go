@@ -139,21 +139,21 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 
 	// Discover all RMD instances that the reconciled RmdWorkload is targeting.
 	// Add or Update those instances with the reconciled RmdWorkload accordingly
-	targetNodes, err := r.findTargetedNodes(request, rmdNodeStates, rmdWorkload)
+	targetedNodes, err := r.findTargetedNodes(request, rmdNodeStates, rmdWorkload)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	for _, node := range targetNodes {
-		if node.workloadExists == false {
+	for _, targetedNode := range targetedNodes {
+		if targetedNode.workloadExists == false {
 			reqLogger.Info("Workload not found on RMD instance, create.")
-			err := r.addWorkload(node.rmdAddress, rmdWorkload, node.nodeName)
+			err := r.addWorkload(targetedNode.rmdAddress, rmdWorkload, targetedNode.nodeName)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 		} else {
 			reqLogger.Info("Workload found on RMD instance, update.")
-			err := r.updateWorkload(node.rmdAddress, rmdWorkload, node.nodeName)
+			err := r.updateWorkload(targetedNode.rmdAddress, rmdWorkload, targetedNode.nodeName)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -228,16 +228,16 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 			reqLogger.Info("Workload not found on RMD instance")
 			continue
 		}
-		obseleteWorkloads[address] = workload.UUID
+		obseleteWorkloads[address] = workload.ID
 	}
 	return obseleteWorkloads, nil
 }
 
-//function to add/update workloads
+//findTargetedNodes returns information on each node that contains the RmdWorkloadunder reconciliation
 func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) ([]targetedNodeInfo, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
-	wlsToChange := make([]targetedNodeInfo, 0)
+	targetedNodes := make([]targetedNodeInfo, 0)
 
 	// Create a map of node state namespaces for RMD pod discovery.
 	// Nodestates and RMD pods are created with the same namespace by node_controller.
@@ -269,9 +269,9 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdN
 		if workload.UUID == "" {
 			workloadExists = false
 		}
-		wlsToChange = append(wlsToChange, targetedNodeInfo{nodeName, address, workloadExists})
+		targetedNodes = append(targetedNodes, targetedNodeInfo{nodeName, address, workloadExists})
 	}
-	return wlsToChange, nil
+	return targetedNodes, nil
 }
 
 // getPodAddress fetches the IP address and port of the desired service.
