@@ -232,7 +232,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(rmdNodeStates *intelv1alpha
 	}
 	return obseleteWorkloads, nil
 }
-	
+
 //findTargetedNodes returns information on each node that contains the RmdWorkload under reconciliation
 func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) ([]targetedNodeInfo, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)

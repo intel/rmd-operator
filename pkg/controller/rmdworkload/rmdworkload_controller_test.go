@@ -50,55 +50,46 @@ func createReconcileRmdWorkloadObject(rmdWorkload *intelv1alpha1.RmdWorkload) (*
 
 }
 
-func createListeners(rmdPods *corev1.PodList, httpResponses map[string]([]rmdtypes.RDTWorkLoad)) ([]*httptest.Server, error) {
-	ts := make([]*httptest.Server, len(rmdPods.Items))
-	listeners := make([]net.Listener, len(rmdPods.Items))
-	muxes := make([]*http.ServeMux, len(rmdPods.Items))
+func createListeners(address string, httpResponses map[string]([]rmdtypes.RDTWorkLoad)) (*httptest.Server, error) {
 	var err error
-	
-	for i := range rmdPods.Items {
-		//get address (i.e. IP and port number)
-		podIP := rmdPods.Items[i].Status.PodIPs[0].IP
-		containerPort := rmdPods.Items[i].Spec.Containers[0].Ports[0].ContainerPort
-		address := fmt.Sprintf("%s:%v", podIP, containerPort)
-	
-		// create a listener with the desired port.
-		listeners[i], err = net.Listen("tcp", address)
-		if err != nil {
-			fmt.Errorf("Failed to create listener")
-		}
-	
-		//create muxes to handle get requests
-		muxes[i] = http.NewServeMux()
-		muxes[i].HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "GET" {
-				b, err := json.Marshal(httpResponses[address])
-				if err == nil {
-					fmt.Fprintln(w, string(b[:]))
-				}
-			} else if r.Method == "POST" {
-				if err == nil {
-					fmt.Fprintln(w, "successful post")
-				}
-			} else 	if r.Method == "PATCH" {
-				if err == nil {
-					fmt.Fprintln(w, "OK")
-				}
-			} else {
-				if err == nil {
-					fmt.Fprintln(w, "ok")
-				}
-			}
-		}))
-	
-		ts[i] = httptest.NewUnstartedServer(muxes[i])
-	
-		ts[i].Listener.Close()
-		ts[i].Listener = listeners[i]
-	
-		// Start the server.
-		ts[i].Start()
+
+	// create a listener with the desired port.
+	newListener, err := net.Listen("tcp", address)
+	if err != nil {
+		fmt.Errorf("Failed to create listener")
 	}
+
+	//create muxes to handle get requests
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			b, err := json.Marshal(httpResponses[address])
+			if err == nil {
+				fmt.Fprintln(w, string(b[:]))
+			}
+		} else if r.Method == "POST" {
+			if err == nil {
+				fmt.Fprintln(w, "successful post")
+			}
+		} else if r.Method == "PATCH" {
+			if err == nil {
+				fmt.Fprintln(w, "OK")
+			}
+		} else {
+			if err == nil {
+				fmt.Fprintln(w, "ok")
+			}
+		}
+	}))
+
+	ts := httptest.NewUnstartedServer(mux)
+
+	ts.Listener.Close()
+	ts.Listener = newListener
+
+	// Start the server.
+	ts.Start()
+
 	return ts, nil
 }
 
@@ -169,7 +160,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 				"127.0.0.1:8080": {
 					{
 						UUID: "rmd-workload-1",
-					},	
+					},
 				},
 			},
 			expectedRmdWorkloadStatus: &intelv1alpha1.RmdWorkloadStatus{
@@ -235,7 +226,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 					{
 						UUID: "rmd-workload-1",
 					},
-				},	
+				},
 			},
 			expectedRmdWorkloadStatus: &intelv1alpha1.RmdWorkloadStatus{
 				WorkloadStates: map[string]intelv1alpha1.WorkloadState{
@@ -388,7 +379,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						CosName: "0_49_guaranteed",
 						Status:  "Successful",
 					},
-				},								
+				},
 			},
 			expectedRmdWorkloadStatus: &intelv1alpha1.RmdWorkloadStatus{
 				WorkloadStates: map[string]intelv1alpha1.WorkloadState{
@@ -468,11 +459,20 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error creating ReconcileRmdWorkload object: (%v)", err)
 		}
-		
-		// Create listeners to manage http GET requests
-		ts, err := createListeners(tc.rmdPods, tc.getWorkloadsResponse)
-		if err != nil {
-			t.Fatalf("error creating listeners: (%v)", err)
+
+		ts := make([]*httptest.Server, 0)
+		for i := range tc.rmdPods.Items {
+			//get address (i.e. IP and port number)
+			podIP := tc.rmdPods.Items[i].Status.PodIPs[0].IP
+			containerPort := tc.rmdPods.Items[i].Spec.Containers[0].Ports[0].ContainerPort
+			address := fmt.Sprintf("%s:%v", podIP, containerPort)
+
+			// Create listeners to manage http GET requests
+			server, err := createListeners(address, tc.getWorkloadsResponse)
+			if err != nil {
+				t.Fatalf("error creating listeners: (%v)", err)
+			}
+			ts = append(ts, server)
 		}
 
 		rmdWorkloadName := tc.rmdWorkload.GetObjectMeta().GetName()
@@ -523,7 +523,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 		for i := range tc.rmdPods.Items {
 			//Close the listeners
 			ts[i].Close()
-		}		
+		}
 	}
 }
 
@@ -1010,9 +1010,19 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			t.Fatalf("error creating ReconcileRmdWorkload object: (%v)", err)
 		}
 
-		ts, err := createListeners(tc.rmdPods, tc.getWorkloadsResponse)
-		if err != nil {
-			t.Fatalf("error creating listeners: (%v)", err)
+		ts := make([]*httptest.Server, 0)
+		for i := range tc.rmdPods.Items {
+			//get address (i.e. IP and port number)
+			podIP := tc.rmdPods.Items[i].Status.PodIPs[0].IP
+			containerPort := tc.rmdPods.Items[i].Spec.Containers[0].Ports[0].ContainerPort
+			address := fmt.Sprintf("%s:%v", podIP, containerPort)
+
+			// Create listeners to manage http GET requests
+			server, err := createListeners(address, tc.getWorkloadsResponse)
+			if err != nil {
+				t.Fatalf("error creating listeners: (%v)", err)
+			}
+			ts = append(ts, server)
 		}
 
 		for i := range tc.rmdNodeStateList.Items {
@@ -1506,11 +1516,21 @@ func TestFindTargetedNodes(t *testing.T) {
 			t.Fatalf("error creating ReconcileRmdWorkload object: (%v)", err)
 		}
 
-		//set up listeners
-		ts, err := createListeners(tc.rmdPods, tc.getWorkloadsResponse)
-		if err != nil {
-			t.Fatalf("error creating listeners: (%v)", err)
+		ts := make([]*httptest.Server, 0)
+		for i := range tc.rmdPods.Items {
+			//get address (i.e. IP and port number)
+			podIP := tc.rmdPods.Items[i].Status.PodIPs[0].IP
+			containerPort := tc.rmdPods.Items[i].Spec.Containers[0].Ports[0].ContainerPort
+			address := fmt.Sprintf("%s:%v", podIP, containerPort)
+
+			// Create listeners to manage http GET requests
+			server, err := createListeners(address, tc.getWorkloadsResponse)
+			if err != nil {
+				t.Fatalf("error creating listeners: (%v)", err)
+			}
+			ts = append(ts, server)
 		}
+
 		//make dummy objects
 		for i := range tc.rmdNodeStates.Items {
 			err = r.client.Create(context.TODO(), &tc.rmdNodeStates.Items[i])
@@ -1750,7 +1770,7 @@ func TestAddWorkload(t *testing.T) {
 		nodeName             string
 		address              string
 		rmdWorkload          *intelv1alpha1.RmdWorkload
-		getWorkloadsResponse []rmdtypes.RDTWorkLoad // CHANGE TYPE
+		getWorkloadsResponse map[string]([]rmdtypes.RDTWorkLoad)
 		expectedRmdWorkload  *intelv1alpha1.RmdWorkload
 	}{
 		{
@@ -1763,12 +1783,14 @@ func TestAddWorkload(t *testing.T) {
 				},
 			},
 			address: "127.0.0.1:8080",
-			getWorkloadsResponse: []rmdtypes.RDTWorkLoad{ // CHANGE
-				{
-					UUID:    "rmd-workload-1",
-					ID:      "1",
-					CosName: "0_22_guaranteed",
-					Status:  "Successful",
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
+					{
+						UUID:    "rmd-workload-1",
+						ID:      "1",
+						CosName: "0_22_guaranteed",
+						Status:  "Successful",
+					},
 				},
 			},
 			expectedRmdWorkload: &intelv1alpha1.RmdWorkload{
@@ -1798,24 +1820,26 @@ func TestAddWorkload(t *testing.T) {
 				},
 			},
 			address: "127.0.0.1:8080",
-			getWorkloadsResponse: []rmdtypes.RDTWorkLoad{ // CHANGE
-				{
-					UUID:    "rmd-workload-1",
-					ID:      "1",
-					CosName: "0_49_guaranteed",
-					Status:  "Successful",
-				},
-				{
-					UUID:    "rmd-workload-2",
-					ID:      "2",
-					CosName: "1_50_guaranteed",
-					Status:  "Successful",
-				},
-				{
-					UUID:    "rmd-workload-3",
-					ID:      "3",
-					CosName: "2_52_guaranteed",
-					Status:  "Successful",
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
+					{
+						UUID:    "rmd-workload-1",
+						ID:      "1",
+						CosName: "0_49_guaranteed",
+						Status:  "Successful",
+					},
+					{
+						UUID:    "rmd-workload-2",
+						ID:      "2",
+						CosName: "1_50_guaranteed",
+						Status:  "Successful",
+					},
+					{
+						UUID:    "rmd-workload-3",
+						ID:      "3",
+						CosName: "2_52_guaranteed",
+						Status:  "Successful",
+					},
 				},
 			},
 			expectedRmdWorkload: &intelv1alpha1.RmdWorkload{
@@ -1892,34 +1916,12 @@ func TestAddWorkload(t *testing.T) {
 			t.Fatalf("error creating ReconcileRmdNodeState object: (%v)", err)
 		}
 
-		// create a listener with the desired port. - REPLACE WITH CREATE LISTENER CALL
+		// create a listener with the desired port.
 		address := "127.0.0.1:8080"
-		l, err := net.Listen("tcp", address)
+		ts, err := createListeners(address, tc.getWorkloadsResponse)
 		if err != nil {
-			t.Fatalf("Failed to create listener")
+			t.Fatalf("error creating Listener: (%v)", err)
 		}
-
-		mux := http.NewServeMux()
-		mux.HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "GET" {
-				b, err := json.Marshal(tc.getWorkloadsResponse)
-				if err == nil {
-					fmt.Fprintln(w, string(b[:]))
-				}
-			} else if r.Method == "POST" {
-				if err == nil {
-					fmt.Fprintln(w, "successful post")
-				}
-			}
-		}))
-
-		ts := httptest.NewUnstartedServer(mux)
-
-		ts.Listener.Close()
-		ts.Listener = l
-
-		// Start the server.
-		ts.Start()
 
 		err = r.addWorkload(fmt.Sprintf("%s%s", "http://", tc.address), tc.rmdWorkload, tc.nodeName)
 		if err != nil {
@@ -1956,7 +1958,7 @@ func TestUpdateWorkload(t *testing.T) {
 		nodeName             string
 		address              string
 		rmdWorkload          *intelv1alpha1.RmdWorkload
-		getWorkloadsResponse []rmdtypes.RDTWorkLoad // CHANGE
+		getWorkloadsResponse map[string]([]rmdtypes.RDTWorkLoad)
 		expectedRmdWorkload  *intelv1alpha1.RmdWorkload
 	}{
 		{
@@ -2064,29 +2066,12 @@ func TestUpdateWorkload(t *testing.T) {
 			t.Fatalf("error creating ReconcileRmdNodeState object: (%v)", err)
 		}
 
-		// create a listener with the desired port. - REPLACE WITH CREATE LISTENER CALL
+		// create a listener with the desired port.
 		address := "127.0.0.1:8080"
-		l, err := net.Listen("tcp", address)
+		ts, err := createListeners(address, tc.getWorkloadsResponse)
 		if err != nil {
-			t.Fatalf("Failed to create listener")
+			t.Errorf("error creating Listener: (%v)", err)
 		}
-
-		mux := http.NewServeMux()
-		mux.HandleFunc("/v1/workloads/", (func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "PATCH" {
-				if err == nil {
-					fmt.Fprintln(w, "OK")
-				}
-			}
-		}))
-
-		ts := httptest.NewUnstartedServer(mux)
-
-		ts.Listener.Close()
-		ts.Listener = l
-
-		// Start the server.
-		ts.Start()
 
 		err = r.updateWorkload(fmt.Sprintf("%s%s", "http://", tc.address), tc.rmdWorkload, tc.nodeName)
 		if err != nil {
