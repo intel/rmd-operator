@@ -67,18 +67,6 @@ func createListeners(address string, httpResponses map[string]([]rmdtypes.RDTWor
 			if err == nil {
 				fmt.Fprintln(w, string(b[:]))
 			}
-		} else if r.Method == "POST" {
-			if err == nil {
-				fmt.Fprintln(w, "successful post")
-			}
-		} else if r.Method == "PATCH" {
-			if err == nil {
-				fmt.Fprintln(w, "OK")
-			}
-		} else {
-			if err == nil {
-				fmt.Fprintln(w, "ok")
-			}
 		}
 	}))
 
