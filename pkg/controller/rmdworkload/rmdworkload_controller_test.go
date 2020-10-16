@@ -2003,7 +2003,7 @@ func TestFindRemovedNodes(t *testing.T) {
 			podIP := tc.rmdPods.Items[i].Status.PodIPs[0].IP
 			containerPort := tc.rmdPods.Items[i].Spec.Containers[0].Ports[0].ContainerPort
 			address := fmt.Sprintf("%s:%v", podIP, containerPort)
-		
+
 			// Create listeners to manage http GET requests
 			server, err := createListeners(address, tc.getWorkloadsResponse)
 			if err != nil {
@@ -2011,7 +2011,7 @@ func TestFindRemovedNodes(t *testing.T) {
 			}
 			ts = append(ts, server)
 		}
-		
+
 		//make dummy objects
 		for i := range tc.rmdNodeStates.Items {
 			err = r.client.Create(context.TODO(), &tc.rmdNodeStates.Items[i])
