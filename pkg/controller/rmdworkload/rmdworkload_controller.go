@@ -248,10 +248,10 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdN
 	return targetedNodes, nil
 }
 
+// findRemovedNodes finds Nodes that have the reconciled workload actively running, but those Nodes have been
+// removed from the RmdWorkload spec. Such instances are returned as a map of address (of RMD Pod) to workload
+// ID so that the workload can be deleted from RMD.
 func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdNodeStates *intelv1alpha1.RmdNodeStateList, rmdWorkload *intelv1alpha1.RmdWorkload) (map[string]string, error) {
-	// findRemovedNodes finds Nodes that have the reconciled workload actively running, but those Nodes have been
-	// removed from the RmdWorkload spec. Such instances are returned as a map of address (of RMD Pod) to workload
-	// ID so that the workload can be deleted from RMD.
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	removedNodes := make(map[string]string)
 	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
@@ -269,10 +269,10 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdNo
 			return nil, err
 		}
 
-		// The reconciled workload is found to be actively running on this Node. Now check if this Node still
-		// exists on the reconciled RmdWorkload Spec. if not, append details to 'removedNodes' for return.
 		workload := rmd.FindWorkloadByName(activeWorkloads, rmdWorkloadName)
 		if workload.UUID == rmdWorkloadName {
+			// The reconciled workload is found to be actively running on this Node. Now check if this Node still
+			// exists on the reconciled RmdWorkload Spec. if not, append details to 'removedNodes' for return.
 			nodeExistsOnRmdWorkloadSpec := false
 			for _, nodeName := range rmdWorkload.Spec.Nodes {
 				if nodeName == rmdNodeState.Spec.Node {
