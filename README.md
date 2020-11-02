@@ -23,7 +23,7 @@ Note: NFD is recommended, but not essential. Node labels can also be applied man
 To use the operator with RMD in [debug mode](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#run-the-service), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8081` before building the operator. Debug mode is advised for testing only. 
 
 ### TLS Enablement
-To use the operator with [RMD with TLS enabled](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#access-rmd-by-tls), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8443` before building the operator. The certificates provided in this repository are taken from the [RMD repository](https://github.com/intel/rmd/tree/master/etc/rmd/cert/client) and should be used for testing only. The user can generate their own certs for production and replace with those existing. The client certs for the RMD operator are stored in the following locations:
+To use the operator with [RMD with TLS enabled](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#access-using-https-over-tcp-connection-secured-by-tls), the [port number](https://github.com/intel/rmd-operator/blob/9d9d500094849a6e95487f303094ea88817e8b82/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8443` before building the operator. Sample certificates are provided by the [RMD repository](https://github.com/intel/rmd/tree/master/etc/rmd/cert/client) and should be used for testing only. The user can generate their own certs for production and replace with those existing. The client certs for the RMD operator should be stored in the following locations in this repo before building the operator:
 
 CA: **build/certs/public/ca.pem**
 
@@ -35,8 +35,6 @@ Private Key: **build/certs/private/key.pem**
 *Note:* The operator deploys pods with the RMD container. The [Dockerfile](https://github.com/intel/rmd/blob/master/Dockerfile) for this container is located on the [RMD repo](https://github.com/intel/rmd) and is out of scope for this project. 
 
 *Note:* If running behind a proxy server, proxy settings must be configured in the RMD Operator [Dockerfile](https://github.com/intel/rmd-operator/blob/master/build/Dockerfile#L3). 
-
-The operator supports RMD v0.2 **only**.
 
 The pod spec used by the operator to deploy the RMD container is located at **build/manifests/rmd-pod.yaml**. Alterations to the image name/tag should be made here. 
 
