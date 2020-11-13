@@ -4,7 +4,7 @@ metadata:
   name: rmdworkload-guaranteed-cache-pstate
 spec:
   # Add fields here
-  coreIds: ["4-7"]
+  coreIds: ["5","7"]
   cache:
     max: 2     
     min: 2
@@ -12,4 +12,4 @@ spec:
     pstate:
       ratio: "3.0"
       monitoring: "on"
-  nodes: ["worker-node-1","worker-node-2"]
+  nodes: ["silpixa00400471"]

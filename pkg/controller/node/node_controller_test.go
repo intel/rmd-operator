@@ -7,6 +7,7 @@ import (
 	"github.com/intel/rmd-operator/pkg/apis"
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	"github.com/intel/rmd-operator/pkg/rmd"
+	"github.com/intel/rmd-operator/pkg/state"
 	rmdCache "github.com/intel/rmd/modules/cache"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -45,8 +46,11 @@ func createReconcileNodeObject(node *corev1.Node) (*ReconcileNode, error) {
 	// Create a fake rmd client.
 	rmdCl := rmd.NewDefaultOperatorRmdClient()
 
+	// Create an empty RmdNodeData object
+	states := &state.RmdNodeData{}
+
 	// Create a ReconcileNode object with the scheme and fake client.
-	r := &ReconcileNode{client: cl, rmdClient: rmdCl, scheme: s}
+	r := &ReconcileNode{client: cl, rmdClient: rmdCl, scheme: s, stateList: states}
 
 	return r, nil
 

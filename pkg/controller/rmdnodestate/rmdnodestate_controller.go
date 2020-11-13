@@ -3,10 +3,12 @@ package rmdnodestate
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	"github.com/intel/rmd-operator/pkg/rmd"
+	"github.com/intel/rmd-operator/pkg/state"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,13 +35,13 @@ var log = logf.Log.WithName("controller_rmdnodestate")
 
 // Add creates a new RmdNodeState Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, states *state.RmdNodeData) error {
+	return add(mgr, newReconciler(mgr, states))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileRmdNodeState{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager, states *state.RmdNodeData) reconcile.Reconciler {
+	return &ReconcileRmdNodeState{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), stateList: states}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -79,6 +81,7 @@ type ReconcileRmdNodeState struct {
 	client    client.Client
 	rmdClient rmd.OperatorRmdClient
 	scheme    *runtime.Scheme
+	stateList *state.RmdNodeData
 }
 
 // Reconcile reads that state of the cluster for a RmdNodeState object and makes changes based on the state read
@@ -95,11 +98,19 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 	// Fetch the RmdNodeState instance
 	rmdNodeState := &intelv1alpha1.RmdNodeState{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, rmdNodeState)
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			// Remove associated RmdNodeData entry
+			nodeName := strings.ReplaceAll(request.Name, "rmd-node-state-", "")
+			log.Info(fmt.Sprintf("State List before delete: %v", r.stateList.StateMap))
+			r.stateList.DeleteRmdNodeData(nodeName, request.Namespace)
+			log.Info(fmt.Sprintf("State List after delete: %v", r.stateList.StateMap))
+			log.Info("DeleteRmdNodeData() run")
+
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.

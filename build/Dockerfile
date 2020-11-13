@@ -1,11 +1,11 @@
 FROM golang:1.13 AS build
 
 # Set proxies
-#ENV http_proxy=
-#ENV https_proxy=
-#ENV ftp_proxy=
-#ENV socks_proxy=
-#ENV no_proxy=
+ENV http_proxy=http://proxy-chain.intel.com:911
+ENV https_proxy=http://proxy-chain.intel.com:911
+ENV ftp_proxy=http://proxy-chain.intel.com:911
+ENV socks_proxy=http://proxy-us.intel.com:1080
+ENV no_proxy=intel.com,.intel.com,localhost,127.0.0.1,10.0.0.0/8,192.168.0.0/16,172.16.0.0/12
 
 # Pull intel-cmt-cat
 RUN mkdir -p /home/intel-cmt-cat \

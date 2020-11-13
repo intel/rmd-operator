@@ -9,4 +9,4 @@ spec:
     cache:
       max: 2
       min: 2
-  nodes: ["worker-node-1","worker-node-2"] 
+  nodes: ["silpixa00400471"] 

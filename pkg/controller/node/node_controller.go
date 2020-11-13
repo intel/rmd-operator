@@ -5,6 +5,7 @@ import (
 	"fmt"
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
+	"github.com/intel/rmd-operator/pkg/state"
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -47,13 +48,13 @@ var log = logf.Log.WithName("controller_node")
 
 // Add creates a new Node Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, states *state.RmdNodeData) error {
+	return add(mgr, newReconciler(mgr, states))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileNode{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager, states *state.RmdNodeData) reconcile.Reconciler {
+	return &ReconcileNode{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), stateList: states}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -105,6 +106,7 @@ type ReconcileNode struct {
 	client    client.Client
 	rmdClient rmd.OperatorRmdClient
 	scheme    *runtime.Scheme
+	stateList *state.RmdNodeData
 }
 
 // Reconcile reads that state of the cluster for a Node object and makes changes based on the state read
@@ -129,13 +131,12 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
-	}
 
+	}
 	// If request namespace not set, use default namespace.
 	namespace := request.Namespace
 	if namespace == "" {
 		namespace = defaultNamespace
-
 	}
 
 	// Return if node does not have RDT-CAT label
@@ -144,6 +145,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	if !existingNodeLabels.Has(rdtCatLabel) {
 		return reconcile.Result{}, nil
 	}
+
 	if existingNodeLabels.Get(rdtCatLabel) != "true" {
 		return reconcile.Result{}, nil
 	}
@@ -190,6 +192,11 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	// Update state.RmdNodeData
+	log.Info(fmt.Sprintf("State List before update: %v", r.stateList))
+	r.stateList.UpdateRmdNodeData(nodeName, rmdNodeStateNamespacedName.Namespace)
+	log.Info(fmt.Sprintf("State List after update: %v", r.stateList))
+	log.Info("UpdateRmdNodeData() run")
 
 	// Update NodeStatus Capacity with l3 cache ways
 	err = r.updateNodeStatusCapacity(rmdNode, rmdPodNamespacedName)
