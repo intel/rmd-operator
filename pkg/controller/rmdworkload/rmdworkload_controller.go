@@ -41,7 +41,6 @@ func Add(mgr manager.Manager, rmdNodeData *state.RmdNodeData) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, rmdNodeData *state.RmdNodeData) reconcile.Reconciler {
-	log.Info("New RmdWorkload Reconciler created")
 	return &ReconcileRmdWorkload{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), rmdNodeData: rmdNodeData}
 }
 
@@ -206,11 +205,6 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdW
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	targetedNodes := make([]targetedNodeInfo, 0)
-
-	// Create a map of node state namespaces for RMD pod discovery.
-	// Nodestates and RMD pods are created with the same namespace by node_controller.
-	// This is the same namespace as the parent node, or default if not set.
-	//nodeNamespaces := make(map[string]string)
 	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
 
 	// Loop through nodes listed in RmdWorkload Spec, add/update workloads where necessary.

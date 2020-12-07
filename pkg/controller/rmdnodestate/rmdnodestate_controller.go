@@ -98,7 +98,6 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 	// Fetch the RmdNodeState instance
 	rmdNodeState := &intelv1alpha1.RmdNodeState{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, rmdNodeState)
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -107,7 +106,6 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 			// Remove associated RmdNodeData entry
 			nodeName := strings.ReplaceAll(request.Name, "rmd-node-state-", "")
 			r.rmdNodeData.DeleteRmdNodeData(nodeName, request.Namespace)
-
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.

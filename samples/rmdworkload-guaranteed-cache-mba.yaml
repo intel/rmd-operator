@@ -11,4 +11,4 @@ spec:
       min: 2
     mba:
       percentage: 50      
-  nodes: ["worker-node-1", "worker-node-2"] 
+  nodes: ["worker-node-1","worker-node-2"] 
