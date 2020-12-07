@@ -3,10 +3,12 @@ package rmdnodestate
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	"github.com/intel/rmd-operator/pkg/rmd"
+	"github.com/intel/rmd-operator/pkg/state"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,13 +35,13 @@ var log = logf.Log.WithName("controller_rmdnodestate")
 
 // Add creates a new RmdNodeState Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, rmdNodeData *state.RmdNodeData) error {
+	return add(mgr, newReconciler(mgr, rmdNodeData))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileRmdNodeState{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager, rmdNodeData *state.RmdNodeData) reconcile.Reconciler {
+	return &ReconcileRmdNodeState{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), rmdNodeData: rmdNodeData}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -76,9 +78,10 @@ var _ reconcile.Reconciler = &ReconcileRmdNodeState{}
 type ReconcileRmdNodeState struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	rmdClient rmd.OperatorRmdClient
-	scheme    *runtime.Scheme
+	client      client.Client
+	rmdClient   rmd.OperatorRmdClient
+	scheme      *runtime.Scheme
+	rmdNodeData *state.RmdNodeData
 }
 
 // Reconcile reads that state of the cluster for a RmdNodeState object and makes changes based on the state read
@@ -100,6 +103,9 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			// Remove associated RmdNodeData entry
+			nodeName := strings.ReplaceAll(request.Name, "rmd-node-state-", "")
+			r.rmdNodeData.DeleteRmdNodeData(nodeName, request.Namespace)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.

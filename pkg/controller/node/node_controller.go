@@ -5,6 +5,7 @@ import (
 	"fmt"
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
+	"github.com/intel/rmd-operator/pkg/state"
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -47,13 +48,13 @@ var log = logf.Log.WithName("controller_node")
 
 // Add creates a new Node Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, rmdNodeData *state.RmdNodeData) error {
+	return add(mgr, newReconciler(mgr, rmdNodeData))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileNode{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager, rmdNodeData *state.RmdNodeData) reconcile.Reconciler {
+	return &ReconcileNode{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), rmdNodeData: rmdNodeData}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -102,9 +103,10 @@ var _ reconcile.Reconciler = &ReconcileNode{}
 type ReconcileNode struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	rmdClient rmd.OperatorRmdClient
-	scheme    *runtime.Scheme
+	client      client.Client
+	rmdClient   rmd.OperatorRmdClient
+	scheme      *runtime.Scheme
+	rmdNodeData *state.RmdNodeData
 }
 
 // Reconcile reads that state of the cluster for a Node object and makes changes based on the state read
@@ -129,13 +131,12 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
-	}
 
+	}
 	// If request namespace not set, use default namespace.
 	namespace := request.Namespace
 	if namespace == "" {
 		namespace = defaultNamespace
-
 	}
 
 	// Return if node does not have RDT-CAT label
@@ -144,6 +145,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	if !existingNodeLabels.Has(rdtCatLabel) {
 		return reconcile.Result{}, nil
 	}
+
 	if existingNodeLabels.Get(rdtCatLabel) != "true" {
 		return reconcile.Result{}, nil
 	}
@@ -190,6 +192,8 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	// Add new node state data to RmdNodeData object
+	r.rmdNodeData.UpdateRmdNodeData(nodeName, rmdNodeStateNamespacedName.Namespace)
 
 	// Update NodeStatus Capacity with l3 cache ways
 	err = r.updateNodeStatusCapacity(rmdNode, rmdPodNamespacedName)

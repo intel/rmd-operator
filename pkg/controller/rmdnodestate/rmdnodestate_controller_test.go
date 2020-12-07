@@ -7,6 +7,7 @@ import (
 	"github.com/intel/rmd-operator/pkg/apis"
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	"github.com/intel/rmd-operator/pkg/rmd"
+	"github.com/intel/rmd-operator/pkg/state"
 	rmdtypes "github.com/intel/rmd/modules/workload/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,8 +44,11 @@ func createReconcileRmdNodeStateObject(rmdNodeState *intelv1alpha1.RmdNodeState)
 	// Create a fake rmd client.
 	rmdCl := rmd.NewDefaultOperatorRmdClient()
 
+	// Create an empty state list
+	rmdNodeData := &state.RmdNodeData{}
+
 	// Create a ReconcileNode object with the scheme and fake client.
-	r := &ReconcileRmdNodeState{client: cl, rmdClient: rmdCl, scheme: s}
+	r := &ReconcileRmdNodeState{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
 
 	return r, nil
 
@@ -114,7 +118,7 @@ func TestNodeStateControllerReconcile(t *testing.T) {
 		address := "127.0.0.1:8080"
 		l, err := net.Listen("tcp", address)
 		if err != nil {
-			t.Fatalf("Failed to create listener")
+			t.Fatalf("Failed to create listener: %v", err)
 		}
 
 		ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
