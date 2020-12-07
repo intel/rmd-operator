@@ -44,10 +44,10 @@ func createReconcileRmdWorkloadObject(rmdWorkload *intelv1alpha1.RmdWorkload) (*
 	// Create a fake rmd client.
 	rmdCl := rmd.NewDefaultOperatorRmdClient()
 
-	states := &state.RmdNodeData{}
+	rmdNodeData := &state.RmdNodeData{}
 
 	// Create a ReconcileRmdWorkload object with the scheme and fake client.
-	r := &ReconcileRmdWorkload{client: cl, rmdClient: rmdCl, scheme: s, stateList: states}
+	r := &ReconcileRmdWorkload{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
 
 	return r, nil
 
@@ -427,7 +427,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 			}
 		}
 		expectedError := false
-		r.stateList.StateMap = tc.rmdNodeData
+		r.rmdNodeData.RmdNodeList = tc.rmdNodeData
 		res, err := r.Reconcile(req)
 		if err != nil {
 			expectedError = true
@@ -897,7 +897,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 		}
 
 		returnedErr := false
-		r.stateList.StateMap = tc.rmdNodeData
+		r.rmdNodeData.RmdNodeList = tc.rmdNodeData
 		obseleteWorkloads, err := r.findObseleteWorkloads(tc.request)
 		if err != nil {
 			returnedErr = true
@@ -1335,7 +1335,7 @@ func TestFindTargetedNodes(t *testing.T) {
 		}
 
 		returnedErr := false
-		r.stateList.StateMap = tc.rmdNodeData
+		r.rmdNodeData.RmdNodeList = tc.rmdNodeData
 		returnedWorkloads, err := r.findTargetedNodes(tc.request, tc.rmdWorkload)
 		if err != nil {
 			returnedErr = true
@@ -1753,7 +1753,7 @@ func TestFindRemovedNodes(t *testing.T) {
 		}
 
 		returnedError := false
-		r.stateList.StateMap = tc.rmdNodeData
+		r.rmdNodeData.RmdNodeList = tc.rmdNodeData
 		removedNodes, err := r.findRemovedNodes(tc.request, tc.rmdWorkload)
 		if err != nil {
 			returnedError = true

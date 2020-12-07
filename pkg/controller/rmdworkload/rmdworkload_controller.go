@@ -35,14 +35,14 @@ var log = logf.Log.WithName("controller_rmdworkload")
 
 // Add creates a new RmdWorkload Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, states *state.RmdNodeData) error {
-	return add(mgr, newReconciler(mgr, states))
+func Add(mgr manager.Manager, rmdNodeData *state.RmdNodeData) error {
+	return add(mgr, newReconciler(mgr, rmdNodeData))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, states *state.RmdNodeData) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, rmdNodeData *state.RmdNodeData) reconcile.Reconciler {
 	log.Info("New RmdWorkload Reconciler created")
-	return &ReconcileRmdWorkload{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), stateList: states}
+	return &ReconcileRmdWorkload{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), rmdNodeData: rmdNodeData}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -79,10 +79,10 @@ var _ reconcile.Reconciler = &ReconcileRmdWorkload{}
 type ReconcileRmdWorkload struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	rmdClient rmd.OperatorRmdClient
-	scheme    *runtime.Scheme
-	stateList *state.RmdNodeData
+	client      client.Client
+	rmdClient   rmd.OperatorRmdClient
+	scheme      *runtime.Scheme
+	rmdNodeData *state.RmdNodeData
 }
 
 //targetedNodeInfo is returned by r.findTargetedNodes()
@@ -179,7 +179,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(request reconcile.Request) 
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	obseleteWorkloads := make(map[string]string)
 
-	for nodeName, namespace := range r.stateList.StateMap {
+	for nodeName, namespace := range r.rmdNodeData.RmdNodeList {
 		address, err := r.getPodAddress(nodeName, namespace)
 		if err != nil {
 			return nil, err
@@ -216,7 +216,7 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdW
 	// Loop through nodes listed in RmdWorkload Spec, add/update workloads where necessary.
 	for _, nodeName := range rmdWorkload.Spec.Nodes {
 		// Get node service address
-		address, err := r.getPodAddress(nodeName, r.stateList.StateMap[nodeName])
+		address, err := r.getPodAddress(nodeName, r.rmdNodeData.RmdNodeList[nodeName])
 		if err != nil {
 			reqLogger.Error(err, "Failed to get pod address")
 			return nil, err
@@ -246,7 +246,7 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWo
 	removedNodes := make(map[string]string)
 	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
 
-	for nodeName, namespace := range r.stateList.StateMap {
+	for nodeName, namespace := range r.rmdNodeData.RmdNodeList {
 		address, err := r.getPodAddress(nodeName, namespace)
 		if err != nil {
 			reqLogger.Error(err, "Failed to get pod address")

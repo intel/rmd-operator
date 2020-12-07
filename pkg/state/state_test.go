@@ -18,7 +18,7 @@ func TestUpdateRmdNodeData(t *testing.T) {
 			nodeName:      "example-node-1",
 			namespaceName: "example-name-space",
 			nodeData: RmdNodeData{
-				StateMap: map[string]string{
+				RmdNodeList: map[string]string{
 					"example-node-1": "default",
 				},
 			},
@@ -32,7 +32,7 @@ func TestUpdateRmdNodeData(t *testing.T) {
 			nodeName:      "example-node-1",
 			namespaceName: "default",
 			nodeData: RmdNodeData{
-				StateMap: map[string]string{},
+				RmdNodeList: map[string]string{},
 			},
 			expectedStates: map[string]string{
 				"example-node-1": "default",
@@ -44,8 +44,8 @@ func TestUpdateRmdNodeData(t *testing.T) {
 		nd := &tc.nodeData
 		nd.UpdateRmdNodeData(tc.nodeName, tc.namespaceName)
 
-		if !reflect.DeepEqual(nd.StateMap, tc.expectedStates) {
-			t.Errorf("%v failed: Expected: %v, Got: %v\n", tc.name, tc.expectedStates, nd.StateMap)
+		if !reflect.DeepEqual(nd.RmdNodeList, tc.expectedStates) {
+			t.Errorf("%v failed: Expected: %v, Got: %v\n", tc.name, tc.expectedStates, nd.RmdNodeList)
 		}
 	}
 }
@@ -63,7 +63,7 @@ func TestDeleteRmdNodeData(t *testing.T) {
 			nodeName:      "example-node-2",
 			namespaceName: "default",
 			nodeData: RmdNodeData{
-				StateMap: map[string]string{
+				RmdNodeList: map[string]string{
 					"example-node-1": "default",
 					"example-node-2": "default",
 				},
@@ -77,8 +77,8 @@ func TestDeleteRmdNodeData(t *testing.T) {
 	for _, tc := range tcases {
 		nd := &tc.nodeData
 		nd.DeleteRmdNodeData(tc.nodeName, tc.namespaceName)
-		if !reflect.DeepEqual(nd.StateMap, tc.expectedStates) {
-			t.Errorf("%v failed: Expected: %v, Got: %v\n", tc.name, tc.expectedStates, nd.StateMap)
+		if !reflect.DeepEqual(nd.RmdNodeList, tc.expectedStates) {
+			t.Errorf("%v failed: Expected: %v, Got: %v\n", tc.name, tc.expectedStates, nd.RmdNodeList)
 		}
 	}
 }

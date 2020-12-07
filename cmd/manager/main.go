@@ -109,13 +109,10 @@ func main() {
 		os.Exit(1)
 	}
 	// Create new RMD Node Data object
-	// TODO: Assign new to var name
-	states := state.NewRmdNodeData()
-	log.Info("State func run")
+	rmdNodeData := state.NewRmdNodeData()
 
 	// Setup all Controllers
-	// TODO: Pass pointer to new RmdNodeData
-	if err := controller.AddToManager(mgr, states); err != nil {
+	if err := controller.AddToManager(mgr, rmdNodeData); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

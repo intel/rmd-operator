@@ -9,9 +9,9 @@ import (
 var AddToManagerFuncs []func(manager.Manager, *state.RmdNodeData) error
 
 // AddToManager adds all Controllers to the Manager
-func AddToManager(m manager.Manager, states *state.RmdNodeData) error {
+func AddToManager(m manager.Manager, rmdNodeData *state.RmdNodeData) error {
 	for _, f := range AddToManagerFuncs {
-		if err := f(m, states); err != nil {
+		if err := f(m, rmdNodeData); err != nil {
 			return err
 		}
 	}
