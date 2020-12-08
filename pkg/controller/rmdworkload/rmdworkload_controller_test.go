@@ -44,7 +44,9 @@ func createReconcileRmdWorkloadObject(rmdWorkload *intelv1alpha1.RmdWorkload) (*
 	// Create a fake rmd client.
 	rmdCl := rmd.NewDefaultOperatorRmdClient()
 
-	rmdNodeData := &state.RmdNodeData{}
+	rmdNodeData := &state.RmdNodeData{
+		RmdNodeList: []string{},
+	}
 
 	// Create a ReconcileRmdWorkload object with the scheme and fake client.
 	r := &ReconcileRmdWorkload{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
@@ -89,7 +91,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 	tcases := []struct {
 		name                      string
 		rmdWorkload               *intelv1alpha1.RmdWorkload
-		rmdNodeData               map[string]string
+		rmdNodeData               []string
 		rmdPods                   *corev1.PodList
 		getWorkloadsResponse      map[string]([]rmdtypes.RDTWorkLoad)
 		expectedRmdWorkloadStatus *intelv1alpha1.RmdWorkloadStatus
@@ -106,9 +108,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 					Nodes: nil,
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com"},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -161,9 +161,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 					Nodes: []string{"example-node.com"},
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com"},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -219,11 +217,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 					Nodes: []string{"example-node.com", "example-node-2.com"},
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-1.com": "default",
-				"example-node-2.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com", "example-node-1.com", "example-node-2.com"},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -350,9 +344,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 					Nodes: []string{"example-node.com-x"},
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com"},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -460,7 +452,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 func TestFindObseleteWorkloads(t *testing.T) {
 	tcases := []struct {
 		name                      string
-		rmdNodeData               map[string]string
+		rmdNodeData               []string
 		request                   reconcile.Request
 		rmdWorkload               *intelv1alpha1.RmdWorkload
 		rmdPods                   *corev1.PodList
@@ -469,10 +461,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 		expectedErr               bool
 	}{
 		{
-			name: "test case 1 - 1 obselete workload only",
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			name:        "test case 1 - 1 obselete workload only",
+			rmdNodeData: []string{"example-node.com"},
 			request: reconcile.Request{
 				types.NamespacedName{
 					Namespace: "default",
@@ -530,10 +520,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "test case 2 - 3 workloads, 1 obselete",
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			name:        "test case 2 - 3 workloads, 1 obselete",
+			rmdNodeData: []string{"example-node.com"},
 			request: reconcile.Request{
 				types.NamespacedName{
 					Namespace: "default",
@@ -599,10 +587,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "test case 3 - no obselete workload",
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			name:        "test case 3 - no obselete workload",
+			rmdNodeData: []string{"example-node.com"},
 			request: reconcile.Request{
 				types.NamespacedName{
 					Namespace: "",
@@ -666,11 +652,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			expectedErr:               false,
 		},
 		{
-			name: "test case 4 - multiple node states and pods, 1 obselete workload on both nodes",
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-			},
+			name:        "test case 4 - multiple node states and pods, 1 obselete workload on both nodes",
+			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
 			request: reconcile.Request{
 				types.NamespacedName{
 					Namespace: "default",
@@ -767,11 +750,8 @@ func TestFindObseleteWorkloads(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "test case 5 - multiple node states and pods, 1 obselete workload on one node only",
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-			},
+			name:        "test case 5 - multiple node states and pods, 1 obselete workload on one node only",
+			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
 			request: reconcile.Request{
 				types.NamespacedName{
 					Namespace: "default",
@@ -919,7 +899,7 @@ func TestFindTargetedNodes(t *testing.T) {
 	tcases := []struct {
 		name                 string
 		request              reconcile.Request
-		rmdNodeData          map[string]string
+		rmdNodeData          []string
 		rmdWorkload          *intelv1alpha1.RmdWorkload
 		rmdPods              *corev1.PodList
 		getWorkloadsResponse map[string]([]rmdtypes.RDTWorkLoad)
@@ -934,9 +914,7 @@ func TestFindTargetedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -999,9 +977,7 @@ func TestFindTargetedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1069,10 +1045,7 @@ func TestFindTargetedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1170,11 +1143,7 @@ func TestFindTargetedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-				"example-node-3.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com", "example-node-3.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1358,7 +1327,7 @@ func TestFindRemovedNodes(t *testing.T) {
 	tcases := []struct {
 		name                 string
 		request              reconcile.Request
-		rmdNodeData          map[string]string
+		rmdNodeData          []string
 		rmdWorkload          *intelv1alpha1.RmdWorkload
 		rmdPods              *corev1.PodList
 		getWorkloadsResponse map[string]([]rmdtypes.RDTWorkLoad)
@@ -1373,10 +1342,7 @@ func TestFindRemovedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1465,11 +1431,7 @@ func TestFindRemovedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-				"example-node-3.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com", "example-node-3.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1597,11 +1559,7 @@ func TestFindRemovedNodes(t *testing.T) {
 					Name:      "rmd-workload-2",
 				},
 			},
-			rmdNodeData: map[string]string{
-				"example-node.com":   "default",
-				"example-node-2.com": "default",
-				"example-node-3.com": "default",
-			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com", "example-node-3.com"},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
