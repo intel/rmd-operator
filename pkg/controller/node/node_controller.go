@@ -133,11 +133,6 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 		return reconcile.Result{}, err
 
 	}
-	// If request namespace not set, use default namespace.
-	namespace := request.Namespace
-	if namespace == "" {
-		namespace = defaultNamespace
-	}
 
 	// Return if node does not have RDT-CAT label
 	// TODO: Extend check to include other RMD plugins (P-State, QAT etc)
@@ -162,7 +157,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	nodeName := string(rmdNode.GetObjectMeta().GetName())
 	rmdPodName := fmt.Sprintf("%s%s", rmdPodNameConst, nodeName)
 	rmdPodNamespacedName := types.NamespacedName{
-		Namespace: namespace,
+		Namespace: defaultNamespace,
 		Name:      rmdPodName,
 	}
 	err = r.createPodIfNotPresent(rmdNode, rmdPodNamespacedName, rmdPodPath)
@@ -173,7 +168,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	// If RmdNodeAgent does not exist for RMD Node, create it.
 	rmdNodeAgentName := fmt.Sprintf("%s%s", nodeAgentNameConst, nodeName)
 	rmdNodeAgentNamespacedName := types.NamespacedName{
-		Namespace: namespace,
+		Namespace: defaultNamespace,
 		Name:      rmdNodeAgentName,
 	}
 	err = r.createPodIfNotPresent(rmdNode, rmdNodeAgentNamespacedName, nodeAgentPath)
@@ -185,7 +180,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 	// RmdNodeState Name is "rmd-node-state-<node-UID>".
 	rmdNodeStateName := fmt.Sprintf("%s%s", rmdNodeStateNameConst, nodeName)
 	rmdNodeStateNamespacedName := types.NamespacedName{
-		Namespace: namespace,
+		Namespace: defaultNamespace,
 		Name:      rmdNodeStateName,
 	}
 	err = r.createNodeStateIfNotPresent(rmdNode, rmdNodeStateNamespacedName)
@@ -193,7 +188,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 		return reconcile.Result{}, err
 	}
 	// Add new node state data to RmdNodeData object
-	r.rmdNodeData.UpdateRmdNodeData(nodeName, rmdNodeStateNamespacedName.Namespace)
+	r.rmdNodeData.UpdateRmdNodeData(nodeName)
 
 	// Update NodeStatus Capacity with l3 cache ways
 	err = r.updateNodeStatusCapacity(rmdNode, rmdPodNamespacedName)

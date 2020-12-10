@@ -105,7 +105,7 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 			// Return and don't requeue
 			// Remove associated RmdNodeData entry
 			nodeName := strings.ReplaceAll(request.Name, "rmd-node-state-", "")
-			r.rmdNodeData.DeleteRmdNodeData(nodeName, request.Namespace)
+			r.rmdNodeData.DeleteRmdNodeData(nodeName)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.

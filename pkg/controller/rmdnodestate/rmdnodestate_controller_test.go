@@ -45,7 +45,9 @@ func createReconcileRmdNodeStateObject(rmdNodeState *intelv1alpha1.RmdNodeState)
 	rmdCl := rmd.NewDefaultOperatorRmdClient()
 
 	// Create an empty state list
-	rmdNodeData := &state.RmdNodeData{}
+	rmdNodeData := &state.RmdNodeData{
+		RmdNodeList: []string{},
+	}
 
 	// Create a ReconcileNode object with the scheme and fake client.
 	r := &ReconcileRmdNodeState{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}

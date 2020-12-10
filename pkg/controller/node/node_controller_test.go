@@ -48,7 +48,7 @@ func createReconcileNodeObject(node *corev1.Node) (*ReconcileNode, error) {
 
 	// Create an empty RmdNodeData object
 	rmdNodeData := &state.RmdNodeData{
-		RmdNodeList: map[string]string{},
+		RmdNodeList: []string{},
 	}
 
 	// Create a ReconcileNode object with the scheme and fake client.

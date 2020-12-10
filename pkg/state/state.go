@@ -7,23 +7,33 @@ import (
 var log = logf.Log.WithName("state")
 
 type RmdNodeData struct {
-	RmdNodeList map[string]string
+	RmdNodeList []string
 }
 
 // NewRmdNodeData() creates an empty RmdNodeData object if no nodestates are present
 // Otherwise, relevant data is extracted from node states and placed in a map
 func NewRmdNodeData() *RmdNodeData {
 	return &RmdNodeData{
-		RmdNodeList: map[string]string{},
+		RmdNodeList: []string{},
 	}
 }
 
 // UpdateRmdNodeData() adds new data to map or updates existing node data
-func (nd *RmdNodeData) UpdateRmdNodeData(nodeName string, namespaceName string) {
-	nd.RmdNodeList[nodeName] = namespaceName
+func (nd *RmdNodeData) UpdateRmdNodeData(nodeName string) {
+	for _, node := range nd.RmdNodeList {
+		if nodeName == node {
+			return
+		}
+	}
+	nd.RmdNodeList = append(nd.RmdNodeList, nodeName)
 }
 
 // DeleteRmdNodeData() deletes node data if the corresponding nodestate was deleted
-func (nd *RmdNodeData) DeleteRmdNodeData(nodeName string, namespaceName string) {
-	delete(nd.RmdNodeList, nodeName)
+func (nd *RmdNodeData) DeleteRmdNodeData(nodeName string) {
+	for index, node := range nd.RmdNodeList {
+		if node == nodeName {
+			nd.RmdNodeList = append(nd.RmdNodeList[:index], nd.RmdNodeList[index+1:]...)
+		}
+	}
+
 }

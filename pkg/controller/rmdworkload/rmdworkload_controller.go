@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	defaultNamespace     = "default"
 	rmdWorkloadNameConst = "-rmd-workload-"
 	rmdPodNameConst      = "rmd-"
 )
@@ -178,8 +179,8 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(request reconcile.Request) 
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	obseleteWorkloads := make(map[string]string)
 
-	for nodeName, namespace := range r.rmdNodeData.RmdNodeList {
-		address, err := r.getPodAddress(nodeName, namespace)
+	for _, nodeName := range r.rmdNodeData.RmdNodeList {
+		address, err := r.getPodAddress(nodeName)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +211,7 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdW
 	// Loop through nodes listed in RmdWorkload Spec, add/update workloads where necessary.
 	for _, nodeName := range rmdWorkload.Spec.Nodes {
 		// Get node service address
-		address, err := r.getPodAddress(nodeName, r.rmdNodeData.RmdNodeList[nodeName])
+		address, err := r.getPodAddress(nodeName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to get pod address")
 			return nil, err
@@ -240,8 +241,8 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWo
 	removedNodes := make(map[string]string)
 	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
 
-	for nodeName, namespace := range r.rmdNodeData.RmdNodeList {
-		address, err := r.getPodAddress(nodeName, namespace)
+	for _, nodeName := range r.rmdNodeData.RmdNodeList {
+		address, err := r.getPodAddress(nodeName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to get pod address")
 			return nil, err
@@ -264,7 +265,7 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWo
 				}
 			}
 			if !nodeExistsOnRmdWorkloadSpec {
-				address, err := r.getPodAddress(nodeName, namespace)
+				address, err := r.getPodAddress(nodeName)
 				if err != nil {
 					return nil, err
 				}
@@ -277,12 +278,12 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWo
 }
 
 // getPodAddress fetches the IP address and port of the desired service.
-func (r *ReconcileRmdWorkload) getPodAddress(nodeName string, namespace string) (string, error) {
+func (r *ReconcileRmdWorkload) getPodAddress(nodeName string) (string, error) {
 	logger := log.WithName("getPodAddress")
 
 	rmdPodName := fmt.Sprintf("%s%s", rmdPodNameConst, nodeName)
 	rmdPodNamespacedName := types.NamespacedName{
-		Namespace: namespace,
+		Namespace: defaultNamespace,
 		Name:      rmdPodName,
 	}
 	rmdPod := &corev1.Pod{}
