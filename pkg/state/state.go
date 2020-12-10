@@ -20,18 +20,12 @@ func NewRmdNodeData() *RmdNodeData {
 
 // UpdateRmdNodeData() adds new data to map or updates existing node data
 func (nd *RmdNodeData) UpdateRmdNodeData(nodeName string) {
-	nodeInList := false
-	if len(nd.RmdNodeList) != 0 {
-		for _, node := range nd.RmdNodeList {
-			if nodeName == node {
-				nodeInList = true
-			}
+	for _, node := range nd.RmdNodeList {
+		if nodeName == node {
+			return
 		}
 	}
-
-	if nodeInList == false {
-		nd.RmdNodeList = append(nd.RmdNodeList, nodeName)
-	}
+	nd.RmdNodeList = append(nd.RmdNodeList, nodeName)
 }
 
 // DeleteRmdNodeData() deletes node data if the corresponding nodestate was deleted

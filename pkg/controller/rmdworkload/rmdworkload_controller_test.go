@@ -1733,16 +1733,14 @@ func TestGetPodAddress(t *testing.T) {
 	tcases := []struct {
 		name            string
 		nodeName        string
-		namespace       string
 		rmdWorkload     *intelv1alpha1.RmdWorkload
 		rmdPod          *corev1.Pod
 		expectedAddress string
 		expectedError   bool
 	}{
 		{
-			name:      "test case 1",
-			nodeName:  "example-node.com",
-			namespace: "default",
+			name:     "test case 1",
+			nodeName: "example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
@@ -1773,9 +1771,8 @@ func TestGetPodAddress(t *testing.T) {
 			expectedError:   false,
 		},
 		{
-			name:      "test case 2",
-			nodeName:  "example-node.com",
-			namespace: "default",
+			name:     "test case 2",
+			nodeName: "example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
@@ -1810,9 +1807,8 @@ func TestGetPodAddress(t *testing.T) {
 			expectedError:   false,
 		},
 		{
-			name:      "test case 3",
-			nodeName:  "example-node.com",
-			namespace: "default",
+			name:     "test case 3",
+			nodeName: "example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
@@ -1836,9 +1832,8 @@ func TestGetPodAddress(t *testing.T) {
 			expectedError:   true,
 		},
 		{
-			name:      "test case 4",
-			nodeName:  "example-node.com",
-			namespace: "default",
+			name:     "test case 4",
+			nodeName: "example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
@@ -1866,9 +1861,8 @@ func TestGetPodAddress(t *testing.T) {
 			expectedError:   true,
 		},
 		{
-			name:      "test case 5",
-			nodeName:  "wrong-nodename-example-node.com",
-			namespace: "default",
+			name:     "test case 5",
+			nodeName: "wrong-nodename-example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
@@ -1918,7 +1912,7 @@ func TestGetPodAddress(t *testing.T) {
 		}
 
 		errorReturned := false
-		address, err := r.getPodAddress(tc.nodeName, tc.namespace)
+		address, err := r.getPodAddress(tc.nodeName)
 		if err != nil {
 			errorReturned = true
 		}

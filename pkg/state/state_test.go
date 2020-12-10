@@ -13,12 +13,28 @@ func TestUpdateRmdNodeData(t *testing.T) {
 		expectedStates []string
 	}{
 		{
-			name:     "test case 1 - data added to empty RmdNodeData struct",
+			name:     "test case 1 - data added to empty RmdNodeList",
 			nodeName: "example-node-1",
 			nodeData: RmdNodeData{
 				RmdNodeList: []string{},
 			},
 			expectedStates: []string{"example-node-1"},
+		},
+		{
+			name:     "test case 2 - data added to non-empty RmdNodeList",
+			nodeName: "example-node-2",
+			nodeData: RmdNodeData{
+				RmdNodeList: []string{"example-node-1"},
+			},
+			expectedStates: []string{"example-node-1", "example-node-2"},
+		},
+		{
+			name:     "test case 3 - node name already in RmdNodeList",
+			nodeName: "example-node-2",
+			nodeData: RmdNodeData{
+				RmdNodeList: []string{"example-node-1", "example-node-2"},
+			},
+			expectedStates: []string{"example-node-1", "example-node-2"},
 		},
 	}
 
