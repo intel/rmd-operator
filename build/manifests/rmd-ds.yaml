@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+    name: rmd-ds
+    namespace: default
+spec:   
+    selector:
+        matchLabels:
+            name: rmd-pod
+    template:
+        metadata:
+            labels:
+                name: rmd-pod
+        spec:
+            containers:
+            - image: rmd:latest
+              imagePullPolicy: IfNotPresent
+              name: rmd
+              ports: 
+              - containerPort: 8081
+              volumeMounts:
+              - mountPath: /sys/fs/
+                name: resctrl
+            volumes:
+            - name: resctrl
+              hostPath:
+                path: /sys/fs/
+            nodeSelector: 
+                "feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"

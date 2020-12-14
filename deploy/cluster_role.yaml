@@ -13,8 +13,12 @@ rules:
   resources: ["pods"]
   verbs: ["get", "list", "watch", "patch", "create", "update"]
 - apiGroups: ["intel.com"]
-  resources: ["rmdworkloads", "rmdnodestates"] 
+  resources: ["rmdworkloads", "rmdnodestates", "rmdconfigs"] 
   verbs: ["get", "list", "watch", "patch", "create", "update"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets"]
+  verbs: ["get", "list", "watch", "patch", "create", "update"]
+
 ---
 
 apiVersion: rbac.authorization.k8s.io/v1

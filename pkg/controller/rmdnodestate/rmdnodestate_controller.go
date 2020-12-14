@@ -112,7 +112,30 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	rmdPodName := fmt.Sprintf("%s%s", rmdPodNameConst, rmdNodeState.Spec.Node)
+	rmdNode := &corev1.Node{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: "", Name: rmdNodeState.Spec.Node}, rmdNode)
+	if err != nil {
+		reqLogger.Info("Could not get node")
+		return reconcile.Result{}, err
+	}
+
+	pods := &corev1.PodList{}
+	err = r.client.List(context.TODO(), pods, client.MatchingLabels(client.MatchingLabels{"name": "rmd-pod"}))
+	if err != nil {
+		reqLogger.Info("Failed to list Pods")
+		return reconcile.Result{}, err
+	}
+
+	rmdPodName := ""
+	for _, pod := range pods.Items {
+		rmdPodName = pod.GetObjectMeta().GetName()
+		for _, address := range rmdNode.Status.Addresses {
+			if address.Address == pod.Status.HostIP {
+				break
+			}
+		}
+	}
+
 	rmdPodNamespacedName := types.NamespacedName{
 		Namespace: request.Namespace,
 		Name:      rmdPodName,
