@@ -9,6 +9,7 @@ import (
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	"github.com/intel/rmd-operator/pkg/rmd"
 	"github.com/intel/rmd-operator/pkg/state"
+	"github.com/intel/rmd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,10 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-)
-
-const (
-	rmdPodNameConst = "rmd-"
 )
 
 var log = logf.Log.WithName("controller_rmdnodestate")
@@ -112,13 +109,6 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	rmdNode := &corev1.Node{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: "", Name: rmdNodeState.Spec.Node}, rmdNode)
-	if err != nil {
-		reqLogger.Info("Could not get node")
-		return reconcile.Result{}, err
-	}
-
 	pods := &corev1.PodList{}
 	err = r.client.List(context.TODO(), pods, client.MatchingLabels(client.MatchingLabels{"name": "rmd-pod"}))
 	if err != nil {
@@ -126,25 +116,19 @@ func (r *ReconcileRmdNodeState) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	rmdPodName := ""
-	for _, pod := range pods.Items {
-		rmdPodName = pod.GetObjectMeta().GetName()
-		for _, address := range rmdNode.Status.Addresses {
-			if address.Address == pod.Status.HostIP {
-				break
-			}
-		}
-	}
-
-	rmdPodNamespacedName := types.NamespacedName{
-		Namespace: request.Namespace,
-		Name:      rmdPodName,
-	}
-	rmdPod := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), rmdPodNamespacedName, rmdPod)
+	rmdPod, err := util.GetPodFromNodeName(pods, rmdNodeState.Spec.Node)
 	if err != nil {
-		reqLogger.Error(err, "Failed to get RMD pod")
-		return reconcile.Result{}, err
+		rmdNode := &corev1.Node{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: "", Name: rmdNodeState.Spec.Node}, rmdNode)
+		if err != nil {
+			reqLogger.Info("Could not get node")
+			return reconcile.Result{}, err
+		}
+
+		rmdPod, err = util.GetPodFromNodeAddresses(pods, rmdNode)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	if len(rmdPod.Spec.Containers) == 0 {

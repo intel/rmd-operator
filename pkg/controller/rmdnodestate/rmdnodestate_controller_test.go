@@ -58,14 +58,18 @@ func createReconcileRmdNodeStateObject(rmdNodeState *intelv1alpha1.RmdNodeState)
 
 func TestNodeStateControllerReconcile(t *testing.T) {
 	//TODO: Add more test cases.
+	// Add test case with node list (find rmd by node IP)
+	// Add test case with deleted rmd node state
+
 	tcases := []struct {
 		name                 string
 		rmdNodeState         *intelv1alpha1.RmdNodeState
+		rmdPodList           *corev1.PodList
 		response             []rmdtypes.RDTWorkLoad
 		expectedRmdNodeState *intelv1alpha1.RmdNodeState
 	}{
 		{
-			name: "test case 1",
+			name: "test case 1 - find node by name",
 			rmdNodeState: &intelv1alpha1.RmdNodeState{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-node-state-example-node-1",
@@ -73,6 +77,58 @@ func TestNodeStateControllerReconcile(t *testing.T) {
 				},
 				Spec: intelv1alpha1.RmdNodeStateSpec{
 					Node: "example-node-1",
+				},
+			},
+			rmdPodList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: "default",
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-vwxyz",
+							Namespace: "default",
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.2",
+						},
+					},
 				},
 			},
 			response: []rmdtypes.RDTWorkLoad{
@@ -135,32 +191,12 @@ func TestNodeStateControllerReconcile(t *testing.T) {
 
 		// Start the server.
 		ts.Start()
-		podName := fmt.Sprintf("%s%s", rmdPodNameConst, tc.rmdNodeState.Spec.Node)
-		dummyRmdPod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      podName,
-				Namespace: nodeNamespace,
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Ports: []corev1.ContainerPort{
-							{
-								ContainerPort: 8080,
-							},
-						},
-					},
-				},
-			},
-			Status: corev1.PodStatus{
-				PodIP: "127.0.0.1",
-			},
+		for _, dummyRmdPod := range tc.rmdPodList.Items {
+			err = r.client.Create(context.TODO(), &dummyRmdPod)
+			if err != nil {
+				t.Fatalf("Failed to create dummy rmd pod")
+			}
 		}
-		err = r.client.Create(context.TODO(), dummyRmdPod)
-		if err != nil {
-			t.Fatalf("Failed to create dummy rmd pod")
-		}
-
 		res, err := r.Reconcile(req)
 		if err != nil {
 			t.Fatalf("reconcile: (%v)", err)

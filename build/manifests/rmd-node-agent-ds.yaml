@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: rmd-node-agent-ds
+  name: rmd-node-agent
   namespace: default
 spec:
   selector:

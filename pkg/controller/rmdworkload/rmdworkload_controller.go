@@ -8,6 +8,7 @@ import (
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
 	"github.com/intel/rmd-operator/pkg/state"
+	"github.com/intel/rmd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,7 +25,7 @@ import (
 const (
 	defaultNamespace     = "default"
 	rmdWorkloadNameConst = "-rmd-workload-"
-	rmdPodNameConst      = "rmd-"
+	rmdPodNameConst      = "rmd-pod"
 )
 
 var log = logf.Log.WithName("controller_rmdworkload")
@@ -155,8 +156,9 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
-	// Perform final check to find workloads that need to be removed due to a change in the reconciled RmdWorkload.
-	// Nodes may have been removed from the reconciled RmdWorkload.Spec. In which case the reconciled workload
+	// Perform final check to find workloads that need to be removed due to a change
+	// in the reconciled RmdWorkload. Nodes may have been removed from the reconciled
+	// RmdWorkload.Spec. In which case the reconciled workload
 	// needs to be deleted from the Node's RMD.
 	removedNodes, err := r.findRemovedNodes(request, rmdWorkload)
 	if err != nil {
@@ -201,7 +203,7 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(request reconcile.Request) 
 	return obseleteWorkloads, nil
 }
 
-//findTargetedNodes returns information on each node that contains the RmdWorkload under reconciliation
+// findTargetedNodes returns information on each node that contains the RmdWorkload under reconciliation
 func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdWorkload *intelv1alpha1.RmdWorkload) ([]targetedNodeInfo, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
@@ -210,7 +212,6 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdW
 
 	// Loop through nodes listed in RmdWorkload Spec, add/update workloads where necessary.
 	for _, nodeName := range rmdWorkload.Spec.Nodes {
-		// Get node service address
 		address, err := r.getPodAddress(nodeName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to get pod address")
@@ -281,16 +282,24 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWo
 func (r *ReconcileRmdWorkload) getPodAddress(nodeName string) (string, error) {
 	logger := log.WithName("getPodAddress")
 
-	rmdPodName := fmt.Sprintf("%s%s", rmdPodNameConst, nodeName)
-	rmdPodNamespacedName := types.NamespacedName{
-		Namespace: defaultNamespace,
-		Name:      rmdPodName,
-	}
-	rmdPod := &corev1.Pod{}
-	err := r.client.Get(context.TODO(), rmdPodNamespacedName, rmdPod)
+	pods := &corev1.PodList{}
+	err := r.client.List(context.TODO(), pods, client.MatchingLabels(client.MatchingLabels{"name": rmdPodNameConst}))
 	if err != nil {
-		logger.Error(err, "Failed to get RMD pod")
+		logger.Error(err, "Failed to list RMD pods")
 		return "", err
+	}
+	rmdPod, err := util.GetPodFromNodeName(pods, nodeName)
+	if err != nil {
+		rmdNode := &corev1.Node{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: nodeName}, rmdNode)
+		if err != nil {
+			logger.Error(err, "Failed to get node")
+			return "", err
+		}
+		rmdPod, err = util.GetPodFromNodeAddresses(pods, rmdNode)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	var podIP string

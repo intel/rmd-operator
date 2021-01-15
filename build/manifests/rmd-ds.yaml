@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-    name: rmd-ds
+    name: rmd
     namespace: default
 spec:   
     selector:
