@@ -74,7 +74,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner RmdConfig
+	// Watch for changes to secondary resource DaemonSets and requeue the owner RmdConfig
 	err = c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &intelv1alpha1.RmdConfig{},
@@ -186,7 +186,7 @@ func (r *ReconcileRmdConfig) Reconcile(request reconcile.Request) (reconcile.Res
 	if err != nil {
 		reqLogger.Error(err, "Failed to update rmdconfig")
 	}
-	return reconcile.Result{RequeueAfter: time.Second * 60}, nil
+	return reconcile.Result{RequeueAfter: time.Second * 5}, nil
 }
 
 func (r *ReconcileRmdConfig) createNodeStateIfNotPresent(nodeName string, rmdConfig *intelv1alpha1.RmdConfig) error {
@@ -298,11 +298,7 @@ func (r *ReconcileRmdConfig) createDaemonSetIfNotPresent(rmdConfig *intelv1alpha
 
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: daemonSet.GetObjectMeta().GetName(), Namespace: daemonSet.GetObjectMeta().GetNamespace()}, daemonSet)
 	if err != nil {
-		logger.Info("DEBUG", "Get DS returned err", err)
-
 		if errors.IsNotFound(err) {
-			// Create DaemonSet
-			logger.Info("DEBUG", "Get DS returned not found err", err)
 			daemonSet, err = newDaemonSet(path)
 			if err != nil {
 				logger.Error(err, "Failed to build daemonSet from manifest")

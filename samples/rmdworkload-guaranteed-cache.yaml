@@ -4,9 +4,9 @@ metadata:
   name: rmdworkload-guaranteed
 spec:
   # Add fields here
-  coreIds: ["0-95"]
+  coreIds: ["0-3","6","8"]
   rdt:
     cache:
-      max: 6 
-      min: 6 
-  nodes: ["silpixa00400471"] 
+      max: 2
+      min: 2
+  nodes: ["worker-node-1","worker-node-2"] 
