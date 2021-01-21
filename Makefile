@@ -1,8 +1,8 @@
-.PHONY: all build images clean test manifests
+.PHONY: all build images deploy clean test manifests
 
 export CC := gcc -std=gnu99 -Wno-error=implicit-function-declaration
 
-all:    format build images
+all:    format build images deploy
 
 test:
 	        go test ./... -v *_test.go
@@ -17,6 +17,15 @@ build:
 images:
 	        docker build -t intel-rmd-node-agent -f build/Dockerfile.nodeagent .
 		        docker build -t intel-rmd-operator -f build/Dockerfile .
+
+deploy:		
+		kubectl apply -f deploy/rbac.yaml
+			kubectl apply -f deploy/crds/intel.com_rmdnodestates_crd.yaml
+				kubectl apply -f deploy/crds/intel.com_rmdworkloads_crd.yaml
+					kubectl apply -f deploy/crds/intel.com_rmdconfigs_crd.yaml
+						kubectl apply -f deploy/operator.yaml
+							kubectl apply -f deploy/rmdconfig.yaml 
+			
 
 clean:
 	        rm -rf ./build/_output/bin/*
