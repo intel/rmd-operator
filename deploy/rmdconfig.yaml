@@ -4,3 +4,5 @@ metadata:
    name: "rmdconfig"
 spec:
   rmdImage: rmd:latest
+  rmdNodeSelector:
+    "feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"      
