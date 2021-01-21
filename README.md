@@ -58,6 +58,10 @@ Create RmdWorkloads CRD:
 
 `kubectl create -f deploy/crds/intel.com_rmdworkloads_crd.yaml`
 
+Create RmdConfigs CRD:
+
+`kubectl create -f deploy/crds/intel.com_rmdconfigs_crd.yaml`
+
 Create Operator Pod:
 
 `kubectl create -f deploy/operator.yaml`

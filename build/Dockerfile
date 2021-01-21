@@ -25,8 +25,8 @@ ENV OPERATOR=/usr/local/bin/intel-rmd-operator \
 # install operator binary
 COPY build/_output/bin/intel-rmd-operator ${OPERATOR}
 COPY build/bin /usr/local/bin
-COPY build/manifests/rmd-node-agent.yaml /rmd-manifests/rmd-node-agent.yaml
-COPY build/manifests/rmd-pod.yaml /rmd-manifests/rmd-pod.yaml
+COPY build/manifests/rmd-node-agent-ds.yaml /rmd-manifests/rmd-node-agent-ds.yaml
+COPY build/manifests/rmd-ds.yaml /rmd-manifests/rmd-ds.yaml
 COPY build/certs /etc/certs
 RUN  /usr/local/bin/user_setup
 RUN chmod -R 650 /etc/certs/private

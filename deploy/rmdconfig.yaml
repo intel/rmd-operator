@@ -1,0 +1,6 @@
+apiVersion: intel.com/v1alpha1
+kind: RmdConfig
+metadata:
+   name: "rmdconfig"
+spec:
+  rmdImage: rmd:latest

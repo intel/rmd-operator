@@ -115,6 +115,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -126,6 +127,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -168,6 +170,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -179,6 +182,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -224,6 +228,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -235,6 +240,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -248,6 +254,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-1.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -259,6 +266,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-1.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -272,6 +280,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -283,6 +292,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -351,6 +361,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -362,6 +373,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -437,10 +449,10 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(tc.expectedRmdWorkloadStatus, &rmdWorkload.Status) {
-			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.expectedRmdWorkloadStatus, rmdWorkload.Status)
+			t.Errorf("Failed: %v - Expected status %v, got %v", tc.name, tc.expectedRmdWorkloadStatus, rmdWorkload.Status)
 		}
 		if tc.expectedError != expectedError {
-			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.expectedError, expectedError)
+			t.Errorf("Failed: %v - Expected error %v, got %v", tc.name, tc.expectedError, expectedError)
 		}
 		for i := range tc.rmdPods.Items {
 			//Close the listeners
@@ -484,6 +496,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -495,6 +508,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -543,6 +557,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -554,6 +569,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -610,6 +626,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -621,6 +638,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -675,6 +693,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -686,6 +705,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -699,6 +719,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -710,6 +731,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -773,6 +795,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -784,6 +807,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -797,6 +821,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -808,6 +833,7 @@ func TestFindObseleteWorkloads(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -930,6 +956,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -941,6 +968,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -994,6 +1022,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1005,6 +1034,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1061,6 +1091,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1072,6 +1103,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1085,6 +1117,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1096,6 +1129,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1160,6 +1194,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1171,6 +1206,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1184,6 +1220,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1195,6 +1232,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1208,6 +1246,7 @@ func TestFindTargetedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-3.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1219,6 +1258,7 @@ func TestFindTargetedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-3.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1358,6 +1398,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1369,6 +1410,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1382,6 +1424,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1393,6 +1436,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1447,6 +1491,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1458,6 +1503,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1471,6 +1517,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1482,6 +1529,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1495,6 +1543,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-3.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1506,6 +1555,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-3.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1575,6 +1625,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1586,6 +1637,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1599,6 +1651,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-2.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1610,6 +1663,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-2.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1623,6 +1677,7 @@ func TestFindRemovedNodes(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "rmd-example-node-3.com",
 							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -1634,6 +1689,7 @@ func TestFindRemovedNodes(t *testing.T) {
 									},
 								},
 							},
+							NodeName: "example-node-3.com",
 						},
 						Status: corev1.PodStatus{
 							PodIPs: []corev1.PodIP{
@@ -1733,13 +1789,14 @@ func TestGetPodAddress(t *testing.T) {
 	tcases := []struct {
 		name            string
 		nodeName        string
+		nodeList        *corev1.NodeList
 		rmdWorkload     *intelv1alpha1.RmdWorkload
-		rmdPod          *corev1.Pod
+		rmdPodList      *corev1.PodList
 		expectedAddress string
 		expectedError   bool
 	}{
 		{
-			name:     "test case 1",
+			name:     "test case 1 -  single pod find by name",
 			nodeName: "example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1747,58 +1804,29 @@ func TestGetPodAddress(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			rmdPod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+			nodeList: &corev1.NodeList{},
+			rmdPodList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8081,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
 								},
 							},
+							NodeName: "example-node.com",
 						},
-					},
-				},
-				Status: corev1.PodStatus{
-					PodIP: "127.0.0.1",
-				},
-			},
-			expectedAddress: "http://127.0.0.1:8081",
-			expectedError:   false,
-		},
-		{
-			name:     "test case 2",
-			nodeName: "example-node.com",
-			rmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-1",
-					Namespace: "default",
-				},
-			},
-			rmdPod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: 8081,
-								},
-							},
-						},
-					},
-				},
-				Status: corev1.PodStatus{
-					PodIPs: []corev1.PodIP{
-						{
-							IP: "127.0.0.1",
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
 						},
 					},
 				},
@@ -1807,50 +1835,89 @@ func TestGetPodAddress(t *testing.T) {
 			expectedError:   false,
 		},
 		{
-			name:     "test case 3",
+			name:     "test case 2 - single pod, find by address",
 			nodeName: "example-node.com",
-			rmdWorkload: &intelv1alpha1.RmdWorkload{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-workload-1",
-					Namespace: "default",
-				},
-			},
-			rmdPod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node.com",
-					Namespace: "default",
-				},
-				Status: corev1.PodStatus{
-					PodIPs: []corev1.PodIP{
-						{
-							IP: "127.0.0.1",
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node.com",
+							Namespace: "",
+						},
+						Status: corev1.NodeStatus{
+							Addresses: []corev1.NodeAddress{
+								{
+									Address: "10.0.1.32",
+								},
+								{
+									Address: "10.0.1.33",
+								},
+							},
 						},
 					},
 				},
 			},
-			expectedAddress: "",
-			expectedError:   true,
-		},
-		{
-			name:     "test case 4",
-			nodeName: "example-node.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
 					Namespace: "default",
 				},
 			},
-			rmdPod: &corev1.Pod{
+			rmdPodList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+							HostIP: "10.0.1.32",
+						},
+					},
+				},
+			},
+			expectedAddress: "http://127.0.0.1:8081",
+			expectedError:   false,
+		},
+		{
+			name:     "test case 3 - no nodename on pod or addresses on node, error",
+			nodeName: "example-node.com",
+			nodeList: &corev1.NodeList{},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node.com",
+					Name:      "rmd-workload-1",
 					Namespace: "default",
 				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+			},
+			rmdPodList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
 								{
-									ContainerPort: 8081,
+									IP: "127.0.0.1",
 								},
 							},
 						},
@@ -1861,41 +1928,271 @@ func TestGetPodAddress(t *testing.T) {
 			expectedError:   true,
 		},
 		{
-			name:     "test case 5",
-			nodeName: "wrong-nodename-example-node.com",
+			name:     "test case 4 - multiple pods and nodes, find by name",
+			nodeName: "example-node-1.com",
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-1",
 					Namespace: "default",
 				},
 			},
-			rmdPod: &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node.com",
-					Namespace: "default",
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node.com",
+							Namespace: "",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-1.com",
+							Namespace: "",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-2.com",
+							Namespace: "",
+						},
+					},
 				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+			},
+
+			rmdPodList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8081,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+							NodeName: "example-node.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.11",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-fghij",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.22",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-klmno",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-2.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.33",
 								},
 							},
 						},
 					},
 				},
-				Status: corev1.PodStatus{
-					PodIP: "127.0.0.1",
-					PodIPs: []corev1.PodIP{
-						{
-							IP: "127.0.0.1",
+			},
+			expectedAddress: "http://127.0.0.22:8081",
+			expectedError:   false,
+		},
+		{
+			name:     "test case 6 - multiple pods and nodes, find by address",
+			nodeName: "example-node-1.com",
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-1",
+					Namespace: "default",
+				},
+			},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node.com",
+							Namespace: "",
+						},
+						Status: corev1.NodeStatus{
+							Addresses: []corev1.NodeAddress{
+								{
+									Address: "10.0.1.10",
+								},
+								{
+									Address: "10.0.1.11",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-1.com",
+							Namespace: "",
+						},
+						Status: corev1.NodeStatus{
+							Addresses: []corev1.NodeAddress{
+								{
+									Address: "10.0.1.20",
+								},
+								{
+									Address: "10.0.1.22",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-2.com",
+							Namespace: "",
+						},
+						Status: corev1.NodeStatus{
+							Addresses: []corev1.NodeAddress{
+								{
+									Address: "10.0.1.30",
+								},
+								{
+									Address: "10.0.1.33",
+								},
+							},
 						},
 					},
 				},
 			},
-			expectedAddress: "",
-			expectedError:   true,
+
+			rmdPodList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+							NodeName: "example-node.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.11",
+								},
+							},
+							HostIP: "10.0.1.11",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-fghij",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.22",
+								},
+							},
+							HostIP: "10.0.1.22",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-klmno",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-2.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.33",
+								},
+							},
+							HostIP: "10.0.1.33",
+						},
+					},
+				},
+			},
+			expectedAddress: "http://127.0.0.22:8081",
+			expectedError:   false,
 		},
 	}
 
@@ -1905,10 +2202,17 @@ func TestGetPodAddress(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error creating ReconcileRmdNodeState object: (%v)", err)
 		}
-
-		err = r.client.Create(context.TODO(), tc.rmdPod)
-		if err != nil {
-			t.Fatalf("Failed to create dummy rmd pod")
+		for _, rmdPod := range tc.rmdPodList.Items {
+			err = r.client.Create(context.TODO(), &rmdPod)
+			if err != nil {
+				t.Fatalf("Failed to create dummy rmd pod")
+			}
+		}
+		for _, node := range tc.nodeList.Items {
+			err = r.client.Create(context.TODO(), &node)
+			if err != nil {
+				t.Fatalf("Failed to create dummy node")
+			}
 		}
 
 		errorReturned := false

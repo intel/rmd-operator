@@ -1,4 +1,4 @@
-package node
+package rmdconfig
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/intel/rmd-operator/pkg/rmd"
 	"github.com/intel/rmd-operator/pkg/state"
 	rmdCache "github.com/intel/rmd/modules/cache"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,14 +19,14 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
+	//"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strconv"
 	"testing"
 )
 
-func createReconcileNodeObject(node *corev1.Node) (*ReconcileNode, error) {
+func createReconcileRmdConfigObject(rmdConfig *intelv1alpha1.RmdConfig) (*ReconcileRmdConfig, error) {
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 
@@ -35,7 +36,7 @@ func createReconcileNodeObject(node *corev1.Node) (*ReconcileNode, error) {
 	}
 
 	// Objects to track in the fake client.
-	objs := []runtime.Object{node}
+	objs := []runtime.Object{rmdConfig}
 
 	// Register operator types with the runtime scheme.
 	s.AddKnownTypes(intelv1alpha1.SchemeGroupVersion)
@@ -52,80 +53,111 @@ func createReconcileNodeObject(node *corev1.Node) (*ReconcileNode, error) {
 	}
 
 	// Create a ReconcileNode object with the scheme and fake client.
-	r := &ReconcileNode{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
+	r := &ReconcileRmdConfig{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
 
 	return r, nil
 
 }
 
-func TestNodeControllerReconcile(t *testing.T) {
+func TestRmdConfigControllerReconcile(t *testing.T) {
 	tcases := []struct {
-		name     string
-		node     *corev1.Node
-		expected map[string]bool
+		name                 string
+		rmdConfig            *intelv1alpha1.RmdConfig
+		nodeList             *corev1.NodeList
+		podList              *corev1.PodList
+		rmdNodeStatesCreated int
+		rmdDSCreated         bool
+		nodeAgentDSCreated   bool
 	}{
 		{
-			name: "test case 1 - rdtCatLabel present, create all",
-			node: &corev1.Node{
+			name: "test case 1 - ",
+			rmdConfig: &intelv1alpha1.RmdConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-node-1",
-					Labels: map[string]string{
-						rdtCatLabel: "true",
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+				},
+			},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-1",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+							},
+						},
 					},
 				},
 			},
-			expected: map[string]bool{
-				rmdPodNameConst:       true,
-				nodeAgentNameConst:    true,
-				rmdNodeStateNameConst: true,
-			},
-		},
-		{
-			name: "test case 2 - rdtCatLabel present but false, create none",
-			node: &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-node-2",
-					Labels: map[string]string{
-						rdtCatLabel: "false",
+			podList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: "default",
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
 					},
 				},
 			},
-			expected: map[string]bool{
-				rmdPodNameConst:       false,
-				nodeAgentNameConst:    false,
-				rmdNodeStateNameConst: false,
-			},
-		},
-		{
-			name: "test case 3 - rdtCatLabel not present, create none",
-			node: &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-node-3",
-				},
-			},
-			expected: map[string]bool{
-				rmdPodNameConst:       false,
-				nodeAgentNameConst:    false,
-				rmdNodeStateNameConst: false,
-			},
+
+			rmdNodeStatesCreated: 1,
+			rmdDSCreated:         true,
+			nodeAgentDSCreated:   true,
 		},
 	}
 
 	for _, tc := range tcases {
-		rmdPodPath = "../../../build/manifests/rmd-pod.yaml"
-		nodeAgentPath = "../../../build/manifests/rmd-node-agent.yaml"
+		rmdDaemonSetPath = "../../../build/manifests/rmd-ds.yaml"
+		nodeAgentDaemonSetPath = "../../../build/manifests/rmd-node-agent-ds.yaml"
 
 		// Create a ReconcileNode object with the scheme and fake client.
-		r, err := createReconcileNodeObject(tc.node)
+		r, err := createReconcileRmdConfigObject(tc.rmdConfig)
 		if err != nil {
 			t.Fatalf("error creating ReconcileNode object: (%v)", err)
 		}
-
-		nodeName := tc.node.GetObjectMeta().GetName()
+		for i := range tc.nodeList.Items {
+			err = r.client.Create(context.TODO(), &tc.nodeList.Items[i])
+			if err != nil {
+				t.Fatalf("Failed to create dummy node")
+			}
+		}
+		for i := range tc.podList.Items {
+			err = r.client.Create(context.TODO(), &tc.podList.Items[i])
+			if err != nil {
+				t.Fatalf("Failed to create dummy rmd pod")
+			}
+		}
 
 		req := reconcile.Request{
 			NamespacedName: types.NamespacedName{
-				Name: nodeName,
+				Name:      tc.rmdConfig.GetObjectMeta().GetName(),
+				Namespace: tc.rmdConfig.GetObjectMeta().GetNamespace(),
 			},
 		}
 
@@ -133,48 +165,41 @@ func TestNodeControllerReconcile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("reconcile: (%v)", err)
 		}
-		namespace := defaultNamespace
 
 		// Initialise all expected value to true
-		created := make(map[string]bool)
-		created[rmdPodNameConst] = true
-		created[nodeAgentNameConst] = true
-		created[rmdNodeStateNameConst] = true
+		rmdCreated := true
+		nodeAgentCreated := true
 
 		// Check if rmd pod has been created
 
-		rmdPod := &corev1.Pod{}
-		rmdPodName := fmt.Sprintf("%s%s", rmdPodNameConst, nodeName)
-		rmdPodNamespacedName := types.NamespacedName{
-			Namespace: namespace,
-			Name:      rmdPodName,
+		rmdDS := &appsv1.DaemonSet{}
+		rmdNamespacedName := types.NamespacedName{
+			Namespace: defaultNamespace,
+			Name:      rmdConst,
 		}
-		err = r.client.Get(context.TODO(), rmdPodNamespacedName, rmdPod)
+		err = r.client.Get(context.TODO(), rmdNamespacedName, rmdDS)
 		if err != nil {
-			created[rmdPodNameConst] = false
+			rmdCreated = false
 		}
 		//Check if node agent has been created
-		rmdNodeAgentPod := &corev1.Pod{}
-		rmdNodeAgentPodName := fmt.Sprintf("%s%s", nodeAgentNameConst, nodeName)
-		rmdNodeAgentPodNamespacedName := types.NamespacedName{
-			Namespace: namespace,
-			Name:      rmdNodeAgentPodName,
+		rmdNodeAgentDS := &appsv1.DaemonSet{}
+		rmdNodeAgentDSNamespacedName := types.NamespacedName{
+			Namespace: defaultNamespace,
+			Name:      nodeAgentNameConst,
 		}
-		err = r.client.Get(context.TODO(), rmdNodeAgentPodNamespacedName, rmdNodeAgentPod)
+		err = r.client.Get(context.TODO(), rmdNodeAgentDSNamespacedName, rmdNodeAgentDS)
 		if err != nil {
-			created[nodeAgentNameConst] = false
+			nodeAgentCreated = false
 		}
 
 		// Check if node state has been created
-		rmdNodeState := &intelv1alpha1.RmdNodeState{}
-		rmdNodeStateName := fmt.Sprintf("%s%s", rmdNodeStateNameConst, nodeName)
-		rmdNodeStatePodNamespacedName := types.NamespacedName{
-			Namespace: namespace,
-			Name:      rmdNodeStateName,
-		}
-		err = r.client.Get(context.TODO(), rmdNodeStatePodNamespacedName, rmdNodeState)
+		rmdNodeStateList := &intelv1alpha1.RmdNodeStateList{}
+		err = r.client.List(context.TODO(), rmdNodeStateList)
 		if err != nil {
-			created[rmdNodeStateNameConst] = false
+			t.Fatalf("Could not list rmd node states")
+		}
+		if tc.rmdNodeStatesCreated != len(rmdNodeStateList.Items) {
+			t.Errorf("Failed: %v - Expected %v rmdNodeStates, got %v", tc.name, tc.rmdNodeStatesCreated, len(rmdNodeStateList.Items))
 		}
 
 		//Check the result of reconciliation to make sure it has the desired state.
@@ -182,13 +207,17 @@ func TestNodeControllerReconcile(t *testing.T) {
 			t.Error("reconcile unexpectedly requeued request")
 		}
 
-		if !reflect.DeepEqual(created, tc.expected) {
-			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.expected, created)
+		if rmdCreated != tc.rmdDSCreated {
+			t.Errorf("Failed: %v - Expected rmdCreated %v, got %v", tc.name, tc.rmdDSCreated, rmdCreated)
+		}
+		if nodeAgentCreated != tc.nodeAgentDSCreated {
+			t.Errorf("Failed: %v - Expected node agent DS created %v, got %v", tc.name, tc.nodeAgentDSCreated, nodeAgentCreated)
 		}
 
 	}
 }
 
+/*
 func TestAddNodeLabelIfNotPresent(t *testing.T) {
 	tcases := []struct {
 		name               string
@@ -260,6 +289,7 @@ func TestAddNodeLabelIfNotPresent(t *testing.T) {
 	for _, tc := range tcases {
 		// Create a ReconcileNode object with the scheme and fake client.
 		r, err := createReconcileNodeObject(tc.node)
+
 		if err != nil {
 			t.Fatalf("error creating ReconcileNode object: (%v)", err)
 		}
@@ -287,83 +317,61 @@ func TestAddNodeLabelIfNotPresent(t *testing.T) {
 
 	}
 }
-
-func TestCreatePodIfNotPresent(t *testing.T) {
+*/
+func TestCreateDSIfNotPresent(t *testing.T) {
 	tcases := []struct {
-		name           string
-		node           *corev1.Node
-		namespacedName types.NamespacedName
-		path           string
-		podCreated     bool
+		name      string
+		rmdConfig *intelv1alpha1.RmdConfig
+		dsName    string
+		path      string
+		dsCreated bool
 	}{
 		{
-			name: "test case 1 - create rmd-pod",
-			node: &corev1.Node{
+			name: "test case 1 - create rmd-ds",
+			rmdConfig: &intelv1alpha1.RmdConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-node-1",
-					UID:  "cdaa1644-64f6-4d56-b4a1-c79b03c642cb",
+					Name:      "rmd-config",
+					Namespace: "default",
 				},
 			},
-			namespacedName: types.NamespacedName{
-				Name:      "rmd-pod-example-node-1",
-				Namespace: "default",
-			},
-			path:       rmdPodPath,
-			podCreated: true,
+			dsName:    rmdConst,
+			path:      "../../../build/manifests/rmd-ds.yaml",
+			dsCreated: true,
 		},
 		{
 			name: "test case 2 - create node-agent",
-			node: &corev1.Node{
+			rmdConfig: &intelv1alpha1.RmdConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-node-1",
-					UID:  "cdaa1644-64f6-4d56-b4a1-c79b03c642cb",
+					Name:      "rmd-config",
+					Namespace: "default",
 				},
 			},
-			namespacedName: types.NamespacedName{
-				Name:      "rmd-node-agent-example-node-1",
-				Namespace: "default",
-			},
-			path:       nodeAgentPath,
-			podCreated: true,
+			dsName:    nodeAgentNameConst,
+			path:      "../../../build/manifests/rmd-node-agent-ds.yaml",
+			dsCreated: true,
 		},
 	}
 
 	for _, tc := range tcases {
-		rmdPodPath = "../../../build/manifests/rmd-pod.yaml"
-		nodeAgentPath = "../../../build/manifests/rmd-node-agent.yaml"
-
-		// Create a ReconcileNode object with the scheme and fake client.
-		r, err := createReconcileNodeObject(tc.node)
+		// Create a Reconcile object with the scheme and fake client.
+		r, err := createReconcileRmdConfigObject(tc.rmdConfig)
 		if err != nil {
 			t.Fatalf("error creating ReconcileNode object: (%v)", err)
 		}
-
-		nodeName := tc.node.GetObjectMeta().GetName()
-		req := reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: nodeName,
-			},
-		}
-		node := &corev1.Node{}
-		err = r.client.Get(context.TODO(), req.NamespacedName, node)
-		if err != nil {
-			t.Fatalf("Could not get node")
-		}
-
-		err = r.createPodIfNotPresent(node, tc.namespacedName, tc.path)
+		err = r.createDaemonSetIfNotPresent(tc.rmdConfig, tc.path)
 		if err != nil {
 			t.Fatalf("r.createPodIfNotPresent returned error: (%v)", err)
 		}
 
-		podCreated := true
-		pod := &corev1.Pod{}
-		err = r.client.Get(context.TODO(), tc.namespacedName, pod)
+		dsCreated := true
+		ds := &appsv1.DaemonSet{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: tc.dsName}, ds)
 		if err != nil {
-			podCreated = false
+			dsCreated = false
 		}
-
-		if tc.podCreated != podCreated {
-			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.podCreated, podCreated)
+		fmt.Printf("\nHERE %v\n", ds.GetObjectMeta().GetName())
+		if tc.dsCreated != dsCreated {
+			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.dsCreated, dsCreated)
 		}
 
 	}
@@ -372,53 +380,38 @@ func TestCreatePodIfNotPresent(t *testing.T) {
 func TestCreateNodeStateIfNotPresent(t *testing.T) {
 	tcases := []struct {
 		name             string
-		node             *corev1.Node
-		namespacedName   types.NamespacedName
+		rmdConfig        *intelv1alpha1.RmdConfig
+		nodeName         string
 		nodeStateCreated bool
 	}{
 		{
 			name: "create rmd node state",
-			node: &corev1.Node{
+			rmdConfig: &intelv1alpha1.RmdConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "example-node-1.com",
-					UID:  "cdaa1644-64f6-4d56-b4a1-c79b03c642cb",
+					Name: "rmd-config",
 				},
 			},
-			namespacedName: types.NamespacedName{
-				Name:      "rmd-node-state-example-node-1.com",
-				Namespace: "default",
-			},
+			nodeName:         "example-node-1.com",
 			nodeStateCreated: true,
 		},
 	}
 
 	for _, tc := range tcases {
 		// Create a ReconcileNode object with the scheme and fake client.
-		r, err := createReconcileNodeObject(tc.node)
+		r, err := createReconcileRmdConfigObject(tc.rmdConfig)
 		if err != nil {
-			t.Fatalf("error creating ReconcileNode object: (%v)", err)
+			t.Fatalf("error creating ReconcileRmdConfig object: (%v)", err)
 		}
 
-		nodeName := tc.node.GetObjectMeta().GetName()
-		req := reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: nodeName,
-			},
-		}
-		node := &corev1.Node{}
-		err = r.client.Get(context.TODO(), req.NamespacedName, node)
-		if err != nil {
-			t.Fatalf("Could not get node")
-		}
-
-		err = r.createNodeStateIfNotPresent(node, tc.namespacedName)
+		err = r.createNodeStateIfNotPresent(tc.nodeName, tc.rmdConfig)
 		if err != nil {
 			t.Fatalf("r.createNodeStateIfNotPresent returned error: (%v)", err)
 		}
 
 		nodeStateCreated := true
 		nodeState := &intelv1alpha1.RmdNodeState{}
-		err = r.client.Get(context.TODO(), tc.namespacedName, nodeState)
+		nodeStateName := fmt.Sprintf("%s%s", "rmd-node-state-", tc.nodeName)
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: nodeStateName}, nodeState)
 		if err != nil {
 			nodeStateCreated = false
 		}
@@ -433,6 +426,7 @@ func TestCreateNodeStateIfNotPresent(t *testing.T) {
 func TestUpdateNodeStatusCapacity(t *testing.T) {
 	tcases := []struct {
 		name              string
+		rmdConfig         *intelv1alpha1.RmdConfig
 		rmdNode           *corev1.Node
 		rmdPod            *corev1.Pod
 		response          rmdCache.Infos
@@ -441,6 +435,12 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 	}{
 		{
 			name: "test case 1",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+			},
 			rmdNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example-node-1.com",
@@ -455,6 +455,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-example-node-1.com",
 					Namespace: "default",
+					Labels:    map[string]string{"name": "rmd-pod"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -466,6 +467,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 							},
 						},
 					},
+					NodeName: "example-node-1.com",
 				},
 				Status: corev1.PodStatus{
 					PodIP: "127.0.0.1",
@@ -490,6 +492,13 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 		},
 		{
 			name: "test case 2 - l3 cache resource not listed on node",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+			},
+
 			rmdNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example-node-1.com",
@@ -502,6 +511,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-example-node-1.com",
 					Namespace: "default",
+					Labels:    map[string]string{"name": "rmd-pod"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -513,6 +523,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 							},
 						},
 					},
+					NodeName: "example-node-1.com",
 				},
 				Status: corev1.PodStatus{
 					PodIP: "127.0.0.1",
@@ -537,6 +548,12 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 		},
 		{
 			name: "test case 3 - changed cache data, but node should not be updated",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+			},
 			rmdNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example-node-1.com",
@@ -551,6 +568,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-example-node-1.com",
 					Namespace: "default",
+					Labels:    map[string]string{"name": "rmd-pod"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -562,6 +580,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 							},
 						},
 					},
+					NodeName: "example-node-1.com",
 				},
 				Status: corev1.PodStatus{
 					PodIP: "127.0.0.1",
@@ -587,6 +606,12 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 
 		{
 			name: "test case - cannot contact rmd",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+			},
 			rmdNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example-node-1.com",
@@ -601,6 +626,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-example-node-1.com",
 					Namespace: "default",
+					Labels:    map[string]string{"name": "rmd-pod"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -612,6 +638,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 							},
 						},
 					},
+					NodeName: "example-node-1.com",
 				},
 				Status: corev1.PodStatus{
 					PodIP: "127.0.0.1",
@@ -627,6 +654,12 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 		},
 		{
 			name: "test case - no container",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+			},
 			rmdNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example-node-1.com",
@@ -641,8 +674,11 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-example-node-1.com",
 					Namespace: "default",
+					Labels:    map[string]string{"name": "rmd-pod"},
 				},
-				Spec: corev1.PodSpec{},
+				Spec: corev1.PodSpec{
+					NodeName: "example-node-1.com",
+				},
 				Status: corev1.PodStatus{
 					PodIP: "127.0.0.1",
 					PodIPs: []corev1.PodIP{
@@ -657,6 +693,12 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 		},
 		{
 			name: "test case - no container port",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-config",
+					Namespace: "default",
+				},
+			},
 			rmdNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "example-node-1.com",
@@ -671,6 +713,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-example-node-1.com",
 					Namespace: "default",
+					Labels:    map[string]string{"name": "rmd-pod"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -678,6 +721,7 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 							Ports: []corev1.ContainerPort{},
 						},
 					},
+					NodeName: "example-node-1.com",
 				},
 				Status: corev1.PodStatus{
 					PodIP: "127.0.0.1",
@@ -694,16 +738,9 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 	}
 	for _, tc := range tcases {
 		// create a listener with the desired port.
-		r, err := createReconcileNodeObject(tc.rmdNode)
+		r, err := createReconcileRmdConfigObject(tc.rmdConfig)
 		if err != nil {
 			t.Fatalf("error creating ReconcileNode object: (%v)", err)
-		}
-
-		nodeName := tc.rmdNode.GetObjectMeta().GetName()
-		req := reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: nodeName,
-			},
 		}
 
 		address := "127.0.0.1:8443"
@@ -728,20 +765,21 @@ func TestUpdateNodeStatusCapacity(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create pod ")
 		}
-		rmdPodNamespacedName := types.NamespacedName{
-			Name:      tc.rmdPod.GetObjectMeta().GetName(),
-			Namespace: tc.rmdPod.GetObjectMeta().GetNamespace(),
+		err = r.client.Create(context.TODO(), tc.rmdNode)
+		if err != nil {
+			t.Fatalf("Failed to create node ")
 		}
+
 		expectedError := false
-		err = r.updateNodeStatusCapacity(tc.rmdNode, rmdPodNamespacedName)
+		err = r.updateNodeStatusCapacity(tc.rmdNode)
 		if err != nil {
 			expectedError = true
 		}
 
 		node := &corev1.Node{}
-		err = r.client.Get(context.TODO(), req.NamespacedName, node)
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: tc.rmdNode.GetObjectMeta().GetName(), Namespace: tc.rmdNode.GetObjectMeta().GetNamespace()}, node)
 		if err != nil {
-			t.Fatalf("Could not get node")
+			t.Fatalf(fmt.Sprintf("%s%s", tc.name, " Could not get node"))
 		}
 		ways := node.Status.Capacity[l3Cache]
 		expectedWays := resource.MustParse(strconv.Itoa(tc.expectedCacheWays))
