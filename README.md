@@ -20,10 +20,10 @@ Note: NFD is recommended, but not essential. Node labels can also be applied man
 ## Setup
 
 ### Debug Mode
-To use the operator with RMD in [debug mode](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#run-the-service), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8081` before building the operator. Debug mode is advised for testing only. 
+To use the operator with RMD in [debug mode](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#run-the-service), the [port number](https://github.com/intel/rmd-operator/-/blob/master/build/manifests/rmd-ds.yaml#L20) of **build/manifests/rmd-ds.yaml** must be set to `8081` before building the operator. Debug mode is advised for testing only. 
 
 ### TLS Enablement
-To use the operator with [RMD with TLS enabled](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#access-using-https-over-tcp-connection-secured-by-tls), the [port number](https://github.com/intel/rmd-operator/blob/9d9d500094849a6e95487f303094ea88817e8b82/build/manifests/rmd-pod.yaml#L12) of **build/manifests/rmd-pod.yaml** must be set to `8443` before building the operator. Sample certificates are provided by the [RMD repository](https://github.com/intel/rmd/tree/master/etc/rmd/cert/client) and should be used for testing only. The user can generate their own certs for production and replace with those existing. The client certs for the RMD operator should be stored in the following locations in this repo before building the operator:
+To use the operator with [RMD with TLS enabled](https://github.com/intel/rmd/blob/master/docs/UserGuide.md#access-using-https-over-tcp-connection-secured-by-tls), the [port number](https://github.com/intel/rmd-operator/blob/master/build/manifests/rmd-ds.yaml#L20) of **build/manifests/rmd-ds.yaml** must be set to `8443` before building the operator. Sample certificates are provided by the [RMD repository](https://github.com/intel/rmd/tree/master/etc/rmd/cert/client) and should be used for testing only. The user can generate their own certs for production and replace with those existing. The client certs for the RMD operator should be stored in the following locations in this repo before building the operator:
 
 CA: **build/certs/public/ca.pem**
 
@@ -36,39 +36,69 @@ Private Key: **build/certs/private/key.pem**
 
 *Note:* If running behind a proxy server, proxy settings must be configured in the RMD Operator [Dockerfile](https://github.com/intel/rmd-operator/blob/master/build/Dockerfile#L3). 
 
-The pod spec used by the operator to deploy the RMD container is located at **build/manifests/rmd-pod.yaml**. Alterations to the image name/tag should be made here. 
+The RMD image name is specified in the `RmdConfig` file located at **deploy/rmdconfig.yaml**. Alterations to the image name/tag should be made here.
 
+Build go binaries for the operator and the node agent:
 
-Build binaries and create docker images for the operator and the node agent:
+`make build`
 
-`make all`
+Build docker images for the operator and the node agent:
+
+`make images`
 
 *Note:* The Docker images built are `intel-rmd-operator:latest` and `intel-rmd-node-agent:latest`. Once built, these images should be stored in a remote docker repository for use throughout the cluster.
 
 ### Deploy
 The **deploy** directory contains all specifications for the required RBAC objects. These objects can be inspected and deployed individually or created all at once using rbac.yaml:
 
-`kubectl create -f deploy/rbac.yaml`
+`kubectl apply -f deploy/rbac.yaml`
 
 Create RmdNodeState CRD:
 
-`kubectl create -f deploy/crds/intel.com_rmdnodestates_crd.yaml`
+`kubectl apply -f deploy/crds/intel.com_rmdnodestates_crd.yaml`
 
 Create RmdWorkloads CRD:
 
-`kubectl create -f deploy/crds/intel.com_rmdworkloads_crd.yaml`
+`kubectl apply -f deploy/crds/intel.com_rmdworkloads_crd.yaml`
 
 Create RmdConfigs CRD:
 
-`kubectl create -f deploy/crds/intel.com_rmdconfigs_crd.yaml`
+`kubectl apply -f deploy/crds/intel.com_rmdconfigs_crd.yaml`
 
-Create Operator Pod:
+Create Operator Deployment:
 
-`kubectl create -f deploy/operator.yaml`
+`kubectl apply -f deploy/operator.yaml`
+
+All of the above `kubectl` commands can be done by:
+
+`make deploy`
 
 Note: For the operator to deploy and run RMD instances, an up to date RMD docker image is required.
 
+### Quickstart
+
+All above commands fror build, images, deploy can be done by:
+
+`make all`
+
 ## Custom Resource Definitions (CRDs)
+
+### RmdConfig
+The RmdConfig custom resource is the object that governs the overall deployemnt of RMD instances across a cluster. 
+The RmdConfig spec allows the user to define the RMD image name/tag they wish to be deployed.
+
+The RmdConfig status represents the nodes which fit the nodes on which RMD is deployed.
+
+#### Example
+See `deploy/rmdconfig.yaml` 
+````yaml
+apiVersion: intel.com/v1alpha1
+kind: RmdConfig
+metadata:
+    name: rmdconfig
+spec:
+    rmdImage: "rmd:latest"
+````
 
 ### RmdWorkload
 The RmdWorkload custom resource is the object used to define a workload for RMD.
@@ -280,7 +310,7 @@ This example displays the RmdNodeState for worker-node-1. It shows that this nod
 ## Pod Requesting Cache Ways
 It is also possible for the operator to create an RmdWorkload **automatically** by interpreting resource requests and [annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) in the pod spec.
 
-**Warning**: Automatic creation of workloads may be unstable and is **not recommended in production** for the RMD Operator v0.1. However, testing and feedback is welcomed to help stabilize this approach for future releases.
+**Warning**: Automatic creation of workloads may be unstable and is **not recommended in production**. However, testing and feedback is welcomed to help stabilize this approach for future releases.
 
 Under this approach, the user creates a pod with a container requesting **exclusive** CPUs from the Kubelet CPU Manager and available cache ways. The pod must also contain RMD specific pod annotations to describe the desired RmdWorkload.
 It is then the responsiblity of the operator and the node agent to do the following:
@@ -537,10 +567,7 @@ To discover why the pod was terminated by the operator it is necessary to check 
 ## Workflows
 ### Direct Configuration
 
-
-![direct-config](images/RMD-Worklflow-Direct.png)
+TODO: Add new diagram
 
 ### Automatic Configuration
-
-
-![auto-config](images/RMD-Operator-Workflow-Auto.png)
+TODO: Add new diagram
