@@ -84,10 +84,12 @@ All above commands fror build, images, deploy can be done by:
 ## Custom Resource Definitions (CRDs)
 
 ### RmdConfig
-The RmdConfig custom resource is the object that governs the overall deployemnt of RMD instances across a cluster. 
-The RmdConfig spec allows the user to define the RMD image name/tag they wish to be deployed.
+The RmdConfig custom resource is the object that governs the overall deployment of RMD instances across a cluster. 
+The RmdConfig spec consists of:
+-   `rmdImage`: This is the name/tag given to the RMD container image that will be deployed in a DaemonSet by the operator.
+-   `rmdNodeSelector`: This is a key/value map used for defining a list of node labels that a node must satisfy in order for RMD to be deployed on it. If no `rmdNodeSelector` is defined, the default value is set to the single feature label for RDT L3 CAT (`"feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"`).
 
-The RmdConfig status represents the nodes which fit the nodes on which RMD is deployed.
+The RmdConfig status represents the nodes which match the `rmdNodeSelector` and have RMD deployed.
 
 #### Example
 See `deploy/rmdconfig.yaml` 
@@ -98,7 +100,10 @@ metadata:
     name: rmdconfig
 spec:
     rmdImage: "rmd:latest"
+    rmdNodeSelector:
+        "feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"
 ````
+**Note:** Only one RmdConfig object is necessary per cluster. This is enforced by virtue of the default naming convention `"rmdconfig"`.
 
 ### RmdWorkload
 The RmdWorkload custom resource is the object used to define a workload for RMD.
