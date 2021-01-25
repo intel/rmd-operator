@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
@@ -11,6 +12,7 @@ import (
 	"github.com/intel/rmd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,6 +28,7 @@ const (
 	defaultNamespace     = "default"
 	rmdWorkloadNameConst = "-rmd-workload-"
 	rmdPodNameConst      = "rmd-pod"
+	rmdConfigConst       = "rmdconfig"
 )
 
 var log = logf.Log.WithName("controller_rmdworkload")
@@ -91,6 +94,12 @@ type targetedNodeInfo struct {
 	nodeName       string
 	rmdAddress     string
 	workloadExists bool
+}
+
+type removedNodeInfo struct {
+	nodeName   string
+	rmdAddress string
+	workloadID string
 }
 
 // Reconcile reads that state of the cluster for a RmdWorkload object and makes changes based on the state read
@@ -166,15 +175,16 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	for address, workloadID := range removedNodes {
-		err = r.rmdClient.DeleteWorkload(address, workloadID)
-		if err != nil {
-			reqLogger.Error(err, "Failed to delete workload from RMD")
-			return reconcile.Result{}, err
-		}
+	err = r.removeWorkload(rmdWorkload, removedNodes)
+	if err != nil {
+		reqLogger.Error(err, "Failed to remove workload")
+		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, nil
+	// Requeue after 60 seconds. This is to account a change in node labels.
+	// Should a node no longer possess the feature label(s) specified in the
+	// RmdWorkload NodeSelector, the workload will be removed.
+	return reconcile.Result{RequeueAfter: time.Second * 60}, nil
 }
 
 func (r *ReconcileRmdWorkload) findObseleteWorkloads(request reconcile.Request) (map[string]string, error) {
@@ -203,43 +213,88 @@ func (r *ReconcileRmdWorkload) findObseleteWorkloads(request reconcile.Request) 
 	return obseleteWorkloads, nil
 }
 
+func (r *ReconcileRmdWorkload) getTargetedNode(nodeName, rmdWorkloadName string) (targetedNodeInfo, error) {
+	targetedNode := targetedNodeInfo{}
+	address, err := r.getPodAddress(nodeName)
+	if err != nil {
+		return targetedNode, err
+	}
+
+	activeWorkloads, err := r.rmdClient.GetWorkloads(address)
+	if err != nil {
+		return targetedNode, err
+	}
+
+	workloadExists := true
+	workload := rmd.FindWorkloadByName(activeWorkloads, rmdWorkloadName)
+	if workload.UUID == "" {
+		workloadExists = false
+	}
+	targetedNode = targetedNodeInfo{nodeName, address, workloadExists}
+
+	return targetedNode, nil
+}
+
 // findTargetedNodes returns information on each node that contains the RmdWorkload under reconciliation
 func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdWorkload *intelv1alpha1.RmdWorkload) ([]targetedNodeInfo, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-
-	targetedNodes := make([]targetedNodeInfo, 0)
-	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
-
-	// Loop through nodes listed in RmdWorkload Spec, add/update workloads where necessary.
-	for _, nodeName := range rmdWorkload.Spec.Nodes {
-		address, err := r.getPodAddress(nodeName)
-		if err != nil {
-			reqLogger.Error(err, "Failed to get pod address")
-			return nil, err
+	if len(rmdWorkload.Spec.NodeSelector) == 0 {
+		targetedNodes := make([]targetedNodeInfo, 0)
+		// Loop through nodes listed in RmdWorkload Spec.
+		for _, nodeName := range rmdWorkload.Spec.Nodes {
+			targetedNode, err := r.getTargetedNode(nodeName, rmdWorkload.GetObjectMeta().GetName())
+			if err != nil {
+				reqLogger.Error(err, "Failed to get targeted node. Has node name been entered correctly in RmdWorkload spec?")
+				continue
+				//	return nil, err
+			}
+			targetedNodes = append(targetedNodes, targetedNode)
 		}
+		return targetedNodes, nil
 
-		activeWorkloads, err := r.rmdClient.GetWorkloads(address)
-		if err != nil {
-			reqLogger.Info("Could not GET workloads.", "Error:", err)
-			return nil, err
-		}
-
-		workloadExists := true
-		workload := rmd.FindWorkloadByName(activeWorkloads, rmdWorkloadName)
-		if workload.UUID == "" {
-			workloadExists = false
-		}
-		targetedNodes = append(targetedNodes, targetedNodeInfo{nodeName, address, workloadExists})
 	}
+
+	// If nodeSelector has been specified in RmdWorkload, only consider nodes with matching labels.
+	targetedNodes := make([]targetedNodeInfo, 0)
+
+	// Get rmdConfig object and merge RmdWorkload nodeSelector labels with RmdConfig
+	// RmdNodeSelector labels. This is to ensure the request is not sent to a node on
+	// which RMD does not exist.
+	rmdConfig := &intelv1alpha1.RmdConfig{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: rmdConfigConst, Namespace: defaultNamespace}, rmdConfig)
+	if err != nil {
+		reqLogger.Error(err, "Failed to get RmdConfig object")
+		return nil, err
+	}
+
+	matchingLabels := labels.Merge(rmdConfig.Spec.RmdNodeSelector, rmdWorkload.Spec.NodeSelector)
+	labelsMap := make(map[string]string)
+	labelsMap = matchingLabels
+	nodeList := &corev1.NodeList{}
+	err = r.client.List(context.TODO(), nodeList, client.MatchingLabels(labelsMap))
+	if err != nil {
+		reqLogger.Error(err, "Failed to list nodes according to RmdWorkload nodeSelector")
+		return nil, err
+	}
+
+	for _, node := range nodeList.Items {
+		targetedNode, err := r.getTargetedNode(node.GetObjectMeta().GetName(), rmdWorkload.GetObjectMeta().GetName())
+		if err != nil {
+			reqLogger.Error(err, "Failed to get targeted node")
+			return nil, err
+		}
+		targetedNodes = append(targetedNodes, targetedNode)
+	}
+
 	return targetedNodes, nil
 }
 
 // findRemovedNodes finds Nodes that have the reconciled workload actively running, but those Nodes have been
 // removed from the RmdWorkload spec. Such instances are returned as a map of address (of RMD Pod) to workload
 // ID so that the workload can be deleted from RMD.
-func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWorkload *intelv1alpha1.RmdWorkload) (map[string]string, error) {
+func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWorkload *intelv1alpha1.RmdWorkload) ([]removedNodeInfo, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	removedNodes := make(map[string]string)
+	removedNodes := make([]removedNodeInfo, 0)
 	rmdWorkloadName := rmdWorkload.GetObjectMeta().GetName()
 
 	for _, nodeName := range r.rmdNodeData.RmdNodeList {
@@ -257,21 +312,42 @@ func (r *ReconcileRmdWorkload) findRemovedNodes(request reconcile.Request, rmdWo
 
 		workload := rmd.FindWorkloadByName(activeWorkloads, rmdWorkloadName)
 		if workload.UUID == rmdWorkloadName {
-			// The reconciled workload is found to be actively running on this Node. Now check if this Node still
-			// exists on the reconciled RmdWorkload Spec. if not, append details to 'removedNodes' for return.
-			nodeExistsOnRmdWorkloadSpec := false
-			for _, rmdNodeName := range rmdWorkload.Spec.Nodes {
-				if rmdNodeName == nodeName {
-					nodeExistsOnRmdWorkloadSpec = true
+			// The reconciled workload is found to be actively running on this Node.
+			if len(rmdWorkload.Spec.NodeSelector) == 0 {
+				// Check if this Node still exists on the reconciled RmdWorkload Spec.
+				// If not, append details to 'removedNodes'.
+				nodeExistsOnRmdWorkloadSpec := false
+				for _, rmdNodeName := range rmdWorkload.Spec.Nodes {
+					if rmdNodeName == nodeName {
+						nodeExistsOnRmdWorkloadSpec = true
+					}
 				}
-			}
-			if !nodeExistsOnRmdWorkloadSpec {
-				address, err := r.getPodAddress(nodeName)
+				if !nodeExistsOnRmdWorkloadSpec {
+					address, err := r.getPodAddress(nodeName)
+					if err != nil {
+						return nil, err
+					}
+					removedNodes = append(removedNodes, removedNodeInfo{nodeName, address, workload.ID})
+				}
+				continue
+			} else {
+				// Check if this Node's labels still match those specified in the
+				// reconciled RmdWorkload NodeSelector field.
+				// If not, append details to 'removedNodes'.
+				node := &corev1.Node{}
+				err := r.client.Get(context.TODO(), types.NamespacedName{Name: nodeName}, node)
 				if err != nil {
+					reqLogger.Error(err, "Failed to get Node")
 					return nil, err
 				}
-				//append this node to removedNodes
-				removedNodes[address] = workload.ID
+				nodeLabels := labels.Set(node.GetObjectMeta().GetLabels())
+				if !labels.AreLabelsInWhiteList(labels.Set(rmdWorkload.Spec.NodeSelector), nodeLabels) {
+					address, err := r.getPodAddress(nodeName)
+					if err != nil {
+						return nil, err
+					}
+					removedNodes = append(removedNodes, removedNodeInfo{nodeName, address, workload.ID})
+				}
 			}
 		}
 	}
@@ -369,7 +445,7 @@ func (r *ReconcileRmdWorkload) addWorkload(address string, rmdWorkload *intelv1a
 }
 
 func (r *ReconcileRmdWorkload) updateWorkload(address string, rmdWorkload *intelv1alpha1.RmdWorkload, nodeName string) error {
-	logger := log.WithName("patchWorkload")
+	logger := log.WithName("updateWorkload")
 	response, err := r.rmdClient.PatchWorkload(rmdWorkload, address, rmdWorkload.Status.WorkloadStates[nodeName].ID)
 	if err != nil {
 		logger.Error(err, "Failed to patch workload to RMD")
@@ -389,6 +465,26 @@ func (r *ReconcileRmdWorkload) updateWorkload(address string, rmdWorkload *intel
 		logger.Error(err, "Failed to update RmdWorkload")
 		return err
 	}
+	return nil
+}
+
+func (r *ReconcileRmdWorkload) removeWorkload(rmdWorkload *intelv1alpha1.RmdWorkload, removedNodes []removedNodeInfo) error {
+	logger := log.WithName("removeWorkload")
+	for _, removedNode := range removedNodes {
+		err := r.rmdClient.DeleteWorkload(removedNode.rmdAddress, removedNode.workloadID)
+		if err != nil {
+			logger.Error(err, "Failed to delete workload from RMD")
+			return err
+		}
+		delete(rmdWorkload.Status.WorkloadStates, removedNode.nodeName)
+	}
+
+	err := r.client.Status().Update(context.TODO(), rmdWorkload)
+	if err != nil {
+		logger.Error(err, "Failed to update RmdWorkload")
+		return err
+	}
+
 	return nil
 }
 

@@ -377,6 +377,13 @@ func (in *RmdWorkloadSpec) DeepCopyInto(out *RmdWorkloadSpec) {
 	}
 	out.Rdt = in.Rdt
 	out.Plugins = in.Plugins
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Nodes != nil {
 		in, out := &in.Nodes, &out.Nodes
 		*out = make([]string, len(*in))

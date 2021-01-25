@@ -41,6 +41,10 @@ spec:
               items:
                 type: string
               type: array
+            nodeSelector:
+              additionalProperties:
+                type: string
+              type: object
             nodes:
               items:
                 type: string
@@ -87,7 +91,6 @@ spec:
               required:
               type: object
           required:
-          - nodes
           type: object
         status:
           description: RmdWorkloadStatus defines the observed state of RmdWorkload
