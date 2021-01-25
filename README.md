@@ -118,7 +118,7 @@ The automatic configuration approach is described [later](https://github.com/int
 #### Examples
 See `samples` directory for RmdWorkload templates.
 
-##### Cache
+##### Cache (Specific Core IDs)
 See `samples/rmdworkload-guaranteed-cache.yaml`
 ````yaml
 apiVersion: intel.com/v1alpha1
@@ -141,6 +141,37 @@ Creating this workload is the equivalent of running the following command for ea
 ````
 $ curl -H "Content-Type: application/json" --request POST --data \
         '{"core_ids":["0","1","2","3","6","8"],
+            "rdt" : { 
+                "cache" : {"max": 2, "min": 2 }
+            }    
+        }' \
+        https://hostname:port/v1/workloads
+````
+##### Cache (All Cores)
+See `samples/rmdworkload-guaranteed-cache-all-cores.yaml`
+````yaml
+apiVersion: intel.com/v1alpha1
+kind: RmdWorkload
+metadata:
+    name: rmdworkload-guaranteed-cache
+spec:
+    allCores: true
+    rdt:
+        cache:
+            max: 2
+            min: 2
+    nodes: ["worker-node-1", "worker-node-2"]
+````
+This workload requests cache from the guaranteed group for **all** CPUs on nodes "worker-node-1" and "worker-node-2". See [intel/rmd](https://github.com/intel/rmd#cache-poolsgroups) for details on cache pools/groups.
+
+**Note**: If `allCores` is `true` and a `coreIds` list is also specified, `allCores` will take precedence and the specified `coreIds` list will be redundant.
+
+**Note**: Replace "worker-node-1" and "worker-node-2" in *nodes* field with the actual node name(s) you wish to target with your RmdWorkload spec. 
+
+Creating this workload is the equivalent of running the following command for each node: 
+````
+$ curl -H "Content-Type: application/json" --request POST --data \
+        '{"core_ids":["0","1","2","3","6","8" . . . .],
             "rdt" : { 
                 "cache" : {"max": 2, "min": 2 }
             }    
