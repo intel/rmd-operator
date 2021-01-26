@@ -31,11 +31,13 @@ spec:
         spec:
           description: RmdWorkloadSpec defines the desired state of RmdWorkload
           properties:
-            coreIds:
+            allCores:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after
                 modifying this file Add custom validation using kubebuilder tags:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: boolean
+            coreIds:
               items:
                 type: string
               type: array
@@ -85,7 +87,6 @@ spec:
               required:
               type: object
           required:
-          - coreIds
           - nodes
           type: object
         status:

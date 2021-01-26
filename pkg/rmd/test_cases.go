@@ -85,6 +85,50 @@ func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wl5.Plugins = wl5plugins
 	wlds = append(wlds, wl5)
 
+	wl6 := &rmdtypes.RDTWorkLoad{}
+	wl6.CoreIDs = []string{"0-95"}
+	wl6.UUID = "rmd-workload-pod-6"
+	max6 := uint32(2)
+	wl6.Policy = "gold"
+	wl6.Rdt.Cache.Max = &max6
+	min6 := uint32(2)
+	wl6.Rdt.Cache.Min = &min6
+	mbaPercent6 := uint32(25)
+	wl6.Rdt.Mba.Percentage = &mbaPercent6
+	mbaMbps6 := uint32(150)
+	wl6.Rdt.Mba.Mbps = &mbaMbps6
+	wl6plugins := make(map[string]map[string]interface{})
+	ratio6 := float64(1.5)
+	wl6pstate := make(map[string]interface{})
+	wl6pstate["ratio"] = ratio6
+	wl6plugins["pstate"] = wl5pstate
+	monitoring6 := "on"
+	wl6plugins["pstate"]["monitoring"] = monitoring6
+	wl6.Plugins = wl6plugins
+	wlds = append(wlds, wl6)
+
+	wl7 := &rmdtypes.RDTWorkLoad{}
+	wl7.CoreIDs = []string{"0-95"}
+	wl7.UUID = "rmd-workload-pod-7"
+	max7 := uint32(2)
+	wl7.Policy = "gold"
+	wl7.Rdt.Cache.Max = &max7
+	min7 := uint32(2)
+	wl7.Rdt.Cache.Min = &min7
+	mbaPercent7 := uint32(25)
+	wl7.Rdt.Mba.Percentage = &mbaPercent7
+	mbaMbps7 := uint32(150)
+	wl7.Rdt.Mba.Mbps = &mbaMbps7
+	wl7plugins := make(map[string]map[string]interface{})
+	ratio7 := float64(1.5)
+	wl7pstate := make(map[string]interface{})
+	wl7pstate["ratio"] = ratio7
+	wl7plugins["pstate"] = wl7pstate
+	monitoring7 := "on"
+	wl7plugins["pstate"]["monitoring"] = monitoring7
+	wl7.Plugins = wl7plugins
+	wlds = append(wlds, wl7)
+
 	return wlds
 }
 
@@ -169,6 +213,59 @@ func rmdWorkloadTestCases() []*intelv1alpha1.RmdWorkload {
 
 			Spec: intelv1alpha1.RmdWorkloadSpec{
 				CoreIds: []string{"0", "20"},
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 2,
+						Min: 2,
+					},
+					Mba: intelv1alpha1.Mba{
+						Percentage: 25,
+						Mbps:       150,
+					},
+				},
+				Plugins: intelv1alpha1.Plugins{
+					Pstate: intelv1alpha1.Pstate{
+						Ratio:      "1.5",
+						Monitoring: "on",
+					},
+				},
+				Policy: "gold",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "rmd-workload-pod-6",
+			},
+
+			Spec: intelv1alpha1.RmdWorkloadSpec{
+				AllCores: true,
+				Rdt: intelv1alpha1.Rdt{
+					Cache: intelv1alpha1.Cache{
+						Max: 2,
+						Min: 2,
+					},
+					Mba: intelv1alpha1.Mba{
+						Percentage: 25,
+						Mbps:       150,
+					},
+				},
+				Plugins: intelv1alpha1.Plugins{
+					Pstate: intelv1alpha1.Pstate{
+						Ratio:      "1.5",
+						Monitoring: "on",
+					},
+				},
+				Policy: "gold",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "rmd-workload-pod-7",
+			},
+
+			Spec: intelv1alpha1.RmdWorkloadSpec{
+				AllCores: true,
+				CoreIds:  []string{"1-2", "5", "11"},
 				Rdt: intelv1alpha1.Rdt{
 					Cache: intelv1alpha1.Cache{
 						Max: 2,

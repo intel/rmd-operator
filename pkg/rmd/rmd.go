@@ -13,6 +13,7 @@ import (
 	rmdtypes "github.com/intel/rmd/modules/workload/types"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 	"net/http"
 	"reflect"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -201,6 +202,37 @@ func (rc *OperatorRmdClient) GetAvailableCacheWays(address string) (int64, error
 	return availableWays, nil
 }
 
+// GetAllCPUS returns available l3 cache ways for Node Status update
+func (rc *OperatorRmdClient) getAllCPUs(address string) (string, error) {
+	logger := log.WithName("getAllCPUs")
+
+	httpString := fmt.Sprintf("%s%s", address, "/v1/cache/l3")
+	resp, err := rc.client.Get(httpString)
+	if err != nil {
+		return "", err
+	}
+
+	receivedJSON, err := ioutil.ReadAll(resp.Body) //This reads raw request body
+	if err != nil {
+		return "", err
+	}
+	allCacheInfo := rmdCache.Infos{}
+	err = json.Unmarshal([]byte(receivedJSON), &allCacheInfo)
+	if err != nil {
+		return "", err
+	}
+	hostCPUSet := cpuset.NewCPUSet()
+	for _, cache := range allCacheInfo.Caches {
+		cacheCPUSet, err := cpuset.Parse(cache.ShareCPUList)
+		if err != nil {
+			return "", err
+		}
+		hostCPUSet = hostCPUSet.Union(cacheCPUSet)
+	}
+	logger.Info("All CPUs discovered on host", "hostCPUSet", hostCPUSet.String())
+	return hostCPUSet.String(), nil
+}
+
 // GetWorkloads returns all active workloads on RMD instance
 func (rc *OperatorRmdClient) GetWorkloads(address string) ([]*rmdtypes.RDTWorkLoad, error) {
 	httpString := fmt.Sprintf("%s%s", address, "/v1/workloads")
@@ -224,11 +256,23 @@ func (rc *OperatorRmdClient) GetWorkloads(address string) ([]*rmdtypes.RDTWorkLo
 
 // Format Workload to rmdtypes.RDTWorkLoad{} as the workloadCR contains unnecessary fields which can
 // be problematic if marshalled directly and delivered to RMD.
-func formatWorkload(workloadCR *intelv1alpha1.RmdWorkload) (*rmdtypes.RDTWorkLoad, error) {
+func (rc *OperatorRmdClient) formatWorkload(workloadCR *intelv1alpha1.RmdWorkload, address string) (*rmdtypes.RDTWorkLoad, error) {
 	rdtWorkload := &rmdtypes.RDTWorkLoad{}
 	rdtWorkload.UUID = workloadCR.GetObjectMeta().GetName()
 	rdtWorkload.Policy = workloadCR.Spec.Policy
-	rdtWorkload.CoreIDs = workloadCR.Spec.CoreIds
+
+	// If AllCores has been declared in the workload spec, discover all cores on the host
+	// and add to request.
+	if workloadCR.Spec.AllCores {
+		allCores, err := rc.getAllCPUs(address)
+		if err != nil {
+			return &rmdtypes.RDTWorkLoad{}, err
+		}
+		coreIDs := []string{allCores}
+		rdtWorkload.CoreIDs = coreIDs
+	} else {
+		rdtWorkload.CoreIDs = workloadCR.Spec.CoreIds
+	}
 
 	// Add Cache data if it has been specified in the workload.
 	maxCache := uint32(workloadCR.Spec.Rdt.Cache.Max)
@@ -275,7 +319,8 @@ func formatWorkload(workloadCR *intelv1alpha1.RmdWorkload) (*rmdtypes.RDTWorkLoa
 // PostWorkload posts workload data from RmdWorkload to RMD
 func (rc *OperatorRmdClient) PostWorkload(workloadCR *intelv1alpha1.RmdWorkload, address string) (string, error) {
 	postFailedErr := errors.NewServiceUnavailable("Response status code error")
-	data, err := formatWorkload(workloadCR)
+
+	data, err := rc.formatWorkload(workloadCR, address)
 	if err != nil {
 		return "", err
 	}
@@ -314,7 +359,7 @@ func (rc *OperatorRmdClient) PostWorkload(workloadCR *intelv1alpha1.RmdWorkload,
 // PatchWorkload patches workload running on RMD with workload data from RmdWorkload
 func (rc *OperatorRmdClient) PatchWorkload(workloadCR *intelv1alpha1.RmdWorkload, address string, workloadID string) (string, error) {
 	patchFailedErr := errors.NewServiceUnavailable("Response status code error")
-	data, err := formatWorkload(workloadCR)
+	data, err := rc.formatWorkload(workloadCR, address)
 	if err != nil {
 		return "", err
 	}

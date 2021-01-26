@@ -91,6 +91,7 @@ func TestFormatWorkload(t *testing.T) {
 	tcases := []struct {
 		name             string
 		workloadCR       *intelv1alpha1.RmdWorkload
+		response         rmdCache.Infos
 		expectedWorkload *rmdtypes.RDTWorkLoad
 	}{
 		{
@@ -118,16 +119,73 @@ func TestFormatWorkload(t *testing.T) {
 			workloadCR:       rmdWorkloads[4],
 			expectedWorkload: expectedRDTWorkloads[4],
 		},
+		{
+			name:       "test case 5",
+			workloadCR: rmdWorkloads[5],
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-23,48-71",
+					},
+					1: {
+						ShareCPUList: "24-47,72-95",
+					},
+				},
+			},
+
+			expectedWorkload: expectedRDTWorkloads[5],
+		},
+		{
+			name:       "test case 6",
+			workloadCR: rmdWorkloads[6],
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-23,48-71",
+					},
+					1: {
+						ShareCPUList: "24-47,72-95",
+					},
+				},
+			},
+
+			expectedWorkload: expectedRDTWorkloads[6],
+		},
 	}
 
 	for _, tc := range tcases {
-		workload, err := formatWorkload(tc.workloadCR)
+		// create a listener with the desired port.
+		address := "127.0.0.1:8080"
+		l, err := net.Listen("tcp", address)
+		if err != nil {
+			t.Fatalf("Failed to create listener")
+		}
+
+		ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			b, err := json.Marshal(tc.response)
+			if err == nil {
+				fmt.Fprintln(w, string(b[:]))
+			}
+		}))
+
+		ts.Listener.Close()
+		ts.Listener = l
+
+		// Start the server.
+		ts.Start()
+
+		client := NewDefaultOperatorRmdClient()
+
+		workload, err := client.formatWorkload(tc.workloadCR, ts.URL)
 		if err != nil {
 			t.Errorf("Error: %v", err)
 		}
 		if !reflect.DeepEqual(workload, tc.expectedWorkload) {
 			t.Errorf("Test case: %v, expected wl to be %v, got %v", tc.name, tc.expectedWorkload, workload)
 		}
+		ts.Close()
 	}
 
 }
@@ -234,6 +292,115 @@ func TestGetAvailableCacheWays(t *testing.T) {
 		}
 		if ways != tc.expectedCacheWays {
 			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.expectedCacheWays, ways)
+		}
+
+		ts.Close()
+
+	}
+}
+
+func TestGetAllCPUs(t *testing.T) {
+	tcases := []struct {
+		name            string
+		address         string
+		response        rmdCache.Infos
+		expectedAllCPUs string
+	}{
+		{
+			name: "test case 1",
+			response: rmdCache.Infos{
+				Num:    0,
+				Caches: nil,
+			},
+			expectedAllCPUs: "",
+		},
+		{
+			name: "test case 2",
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-10",
+					},
+				},
+			},
+			expectedAllCPUs: "0-10",
+		},
+		{
+			name: "test case 3",
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-10",
+					},
+					1: {
+						ShareCPUList: "11-20",
+					},
+				},
+			},
+			expectedAllCPUs: "0-20",
+		},
+		{
+			name: "test case 4",
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-23,48-71",
+					},
+					1: {
+						ShareCPUList: "24-47,72-95",
+					},
+				},
+			},
+			expectedAllCPUs: "0-95",
+		},
+		{
+			name: "test case 5",
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-9,21-29",
+					},
+					1: {
+						ShareCPUList: "10-19,30-39",
+					},
+				},
+			},
+			expectedAllCPUs: "0-19,21-39",
+		},
+	}
+
+	for _, tc := range tcases {
+		// create a listener with the desired port.
+		address := "127.0.0.1:8080"
+		l, err := net.Listen("tcp", address)
+		if err != nil {
+			t.Fatalf("Failed to create listener")
+		}
+
+		ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			b, err := json.Marshal(tc.response)
+			if err == nil {
+				fmt.Fprintln(w, string(b[:]))
+			}
+		}))
+
+		ts.Listener.Close()
+		ts.Listener = l
+
+		// Start the server.
+		ts.Start()
+
+		client := NewDefaultOperatorRmdClient()
+		cpus, err := client.getAllCPUs(ts.URL)
+		if err != nil {
+			t.Fatalf("Error occurred when calling GetAvailableCacheWays")
+		}
+		if cpus != tc.expectedAllCPUs {
+			t.Errorf("Failed %v, expected: %v, got %v", tc.name, tc.expectedAllCPUs, cpus)
 		}
 
 		ts.Close()
