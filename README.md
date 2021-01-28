@@ -178,6 +178,38 @@ $ curl -H "Content-Type: application/json" --request POST --data \
         }' \
         https://hostname:port/v1/workloads
 ````
+##### Cache (NodeSelector)
+See `samples/rmdworkload-guaranteed-cache-nodeselector.yaml`
+````yaml
+apiVersion: intel.com/v1alpha1
+kind: RmdWorkload
+metadata:
+    name: rmdworkload-guaranteed-cache
+spec:
+    allCores: true
+    rdt:
+        cache:
+            max: 2
+            min: 2
+    nodeSelector: 
+      feature.node.kubernetes.io/cpu-rdt.RDTL3CA: "true"
+````
+This workload requests cache from the guaranteed group for **all** CPUs on all nodes with feature label `feature.node.kubernetes.io/cpu-rdt.RDTL3CA=true`. See [intel/rmd](https://github.com/intel/rmd#cache-poolsgroups) for details on cache pools/groups.
+
+The `nodeSelector` label is useful for cluster partitioning. For example, a number of nodes can be grouped together by a common label and pre-provisioned with particular RDT features/settings via a single RMD workload. This node group can then be targeted by workloads that require such settings via existing K8s constructs such as [`nodeAffinity`](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/).
+
+**Note**: If `nodeSelector` is specified and a `nodes` list is also specified, `nodeSelector` will take precedence and the specified `nodes` list will be redundant.
+
+Creating this workload is the equivalent of running the following command for each node: 
+````
+$ curl -H "Content-Type: application/json" --request POST --data \
+        '{"core_ids":["0","1","2","3","6","8" . . . .],
+            "rdt" : { 
+                "cache" : {"max": 2, "min": 2 }
+            }    
+        }' \
+        https://hostname:port/v1/workloads
+````
 ##### Memory Bandwidth Allocation (MBA)
 
 **Note:** MBA can only be requested **with** guaranteed cache. See [intel/rmd](https://github.com/intel/rmd) for more information on MBA.

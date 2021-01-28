@@ -388,7 +388,7 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 			expectedRmdWorkloadStatus: &intelv1alpha1.RmdWorkloadStatus{
 				WorkloadStates: nil,
 			},
-			expectedError: true,
+			expectedError: false,
 		},
 	}
 
@@ -927,6 +927,8 @@ func TestFindTargetedNodes(t *testing.T) {
 		request              reconcile.Request
 		rmdNodeData          []string
 		rmdWorkload          *intelv1alpha1.RmdWorkload
+		rmdConfig            *intelv1alpha1.RmdConfig
+		rmdNodeList          *corev1.NodeList
 		rmdPods              *corev1.PodList
 		getWorkloadsResponse map[string]([]rmdtypes.RDTWorkLoad)
 		expectedWorkloads    []targetedNodeInfo
@@ -950,6 +952,8 @@ func TestFindTargetedNodes(t *testing.T) {
 					Nodes: []string{"example-node.com"},
 				},
 			},
+			rmdConfig:   &intelv1alpha1.RmdConfig{},
+			rmdNodeList: &corev1.NodeList{},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -1016,6 +1020,8 @@ func TestFindTargetedNodes(t *testing.T) {
 					Nodes:  []string{"example-node.com"},
 				},
 			},
+			rmdConfig:   &intelv1alpha1.RmdConfig{},
+			rmdNodeList: &corev1.NodeList{},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -1085,6 +1091,8 @@ func TestFindTargetedNodes(t *testing.T) {
 					Nodes: []string{"example-node.com", "example-node-2.com"},
 				},
 			},
+			rmdConfig:   &intelv1alpha1.RmdConfig{},
+			rmdNodeList: &corev1.NodeList{},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -1188,6 +1196,8 @@ func TestFindTargetedNodes(t *testing.T) {
 					Nodes:  []string{"example-node.com", "example-node-3.com"},
 				},
 			},
+			rmdConfig:   &intelv1alpha1.RmdConfig{},
+			rmdNodeList: &corev1.NodeList{},
 			rmdPods: &corev1.PodList{
 				Items: []corev1.Pod{
 					{
@@ -1312,6 +1322,203 @@ func TestFindTargetedNodes(t *testing.T) {
 			},
 			expectedErr: false,
 		},
+		{
+			name: "test case 6 - 3 nodestates, workload to be updated on 2 nodes via nodeselector - nodes and nodeselector conflict, nodeselector takes precedence",
+			request: reconcile.Request{
+				types.NamespacedName{
+					Namespace: "default",
+					Name:      "rmd-workload-2",
+				},
+			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com", "example-node-3.com"},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-2",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					Policy: "gold",
+					Nodes:  []string{"example-node-2.com"},
+					NodeSelector: map[string]string{
+						"label1": "true",
+						"label2": "true",
+					},
+				},
+			},
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmdconfig",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdNodeSelector: map[string]string{
+						"label0": "true",
+						"label1": "true",
+					},
+				},
+			},
+
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-2.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8082,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-2.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.2",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-3.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8083,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-3.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.3",
+								},
+							},
+						},
+					},
+				},
+			},
+			rmdNodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label0": "true",
+								"label1": "true",
+								"label2": "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-2.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label0": "true",
+								"label1": "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-3.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label0": "true",
+								"label1": "true",
+								"label2": "true",
+							},
+						},
+					},
+				},
+			},
+
+			getWorkloadsResponse: map[string][]rmdtypes.RDTWorkLoad{
+				"127.0.0.1:8080": {
+					{
+						UUID: "rmd-workload-1",
+						ID:   "1",
+					},
+					{
+						UUID: "rmd-workload-2",
+						ID:   "2",
+					},
+				},
+				"127.0.0.2:8082": {
+					{
+						UUID: "rmd-workload-3",
+						ID:   "3",
+					},
+				},
+				"127.0.0.3:8083": {
+					{
+						UUID: "rmd-workload-2",
+						ID:   "2",
+					},
+					{
+						UUID: "rmd-workload-4",
+						ID:   "4",
+					},
+				},
+			},
+			expectedWorkloads: []targetedNodeInfo{
+				{
+					nodeName:       "example-node.com",
+					rmdAddress:     "http://127.0.0.1:8080",
+					workloadExists: true,
+				},
+				{
+					nodeName:       "example-node-3.com",
+					rmdAddress:     "http://127.0.0.3:8083",
+					workloadExists: true,
+				},
+			},
+			expectedErr: false,
+		},
 	}
 
 	for _, tc := range tcases {
@@ -1335,12 +1542,25 @@ func TestFindTargetedNodes(t *testing.T) {
 			ts = append(ts, server)
 		}
 
-		//make dummy pods
+		// create dummy pods
 		for i := range tc.rmdPods.Items {
 			err = r.client.Create(context.TODO(), &tc.rmdPods.Items[i])
 			if err != nil {
 				t.Fatalf("Failed to create dummy rmd pod")
 			}
+		}
+		// create nodes
+		for i := range tc.rmdNodeList.Items {
+			err = r.client.Create(context.TODO(), &tc.rmdNodeList.Items[i])
+			if err != nil {
+				t.Fatalf("Failed to create dummy rmd node")
+			}
+		}
+
+		//create rmdConfig
+		err = r.client.Create(context.TODO(), tc.rmdConfig)
+		if err != nil {
+			t.Fatalf("Failed to create dummy rmd node")
 		}
 
 		returnedErr := false
@@ -1368,10 +1588,11 @@ func TestFindRemovedNodes(t *testing.T) {
 		name                 string
 		request              reconcile.Request
 		rmdNodeData          []string
+		rmdNodes             *corev1.NodeList
 		rmdWorkload          *intelv1alpha1.RmdWorkload
 		rmdPods              *corev1.PodList
 		getWorkloadsResponse map[string]([]rmdtypes.RDTWorkLoad)
-		expectedNodes        map[string]string
+		expectedRemovedNodes []removedNodeInfo
 		expectedError        bool
 	}{
 		{
@@ -1383,6 +1604,7 @@ func TestFindRemovedNodes(t *testing.T) {
 				},
 			},
 			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
+			rmdNodes:    &corev1.NodeList{},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1462,8 +1684,12 @@ func TestFindRemovedNodes(t *testing.T) {
 					},
 				},
 			},
-			expectedNodes: map[string]string{
-				"http://127.0.0.2:8082": "2",
+			expectedRemovedNodes: []removedNodeInfo{
+				{
+					nodeName:   "example-node-2.com",
+					rmdAddress: "http://127.0.0.2:8082",
+					workloadID: "2",
+				},
 			},
 			expectedError: false,
 		},
@@ -1476,6 +1702,7 @@ func TestFindRemovedNodes(t *testing.T) {
 				},
 			},
 			rmdNodeData: []string{"example-node.com", "example-node-2.com", "example-node-3.com"},
+			rmdNodes:    &corev1.NodeList{},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1595,10 +1822,19 @@ func TestFindRemovedNodes(t *testing.T) {
 					},
 				},
 			},
-			expectedNodes: map[string]string{
-				"http://127.0.0.1:8080": "2",
-				"http://127.0.0.3:8083": "4",
+			expectedRemovedNodes: []removedNodeInfo{
+				{
+					nodeName:   "example-node.com",
+					rmdAddress: "http://127.0.0.1:8080",
+					workloadID: "2",
+				},
+				{
+					nodeName:   "example-node-3.com",
+					rmdAddress: "http://127.0.0.3:8083",
+					workloadID: "4",
+				},
 			},
+
 			expectedError: false,
 		},
 		{
@@ -1610,6 +1846,7 @@ func TestFindRemovedNodes(t *testing.T) {
 				},
 			},
 			rmdNodeData: []string{"example-node.com", "example-node-2.com", "example-node-3.com"},
+			rmdNodes:    &corev1.NodeList{},
 			rmdWorkload: &intelv1alpha1.RmdWorkload{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rmd-workload-2",
@@ -1733,7 +1970,255 @@ func TestFindRemovedNodes(t *testing.T) {
 					},
 				},
 			},
-			expectedNodes: map[string]string{},
+			expectedRemovedNodes: []removedNodeInfo{},
+			expectedError:        false,
+		},
+		{
+			name: "test case 4 - workload to be deleted from 1 node, by nodeselector",
+			request: reconcile.Request{
+				types.NamespacedName{
+					Namespace: "default",
+					Name:      "rmd-workload-2",
+				},
+			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
+			rmdNodes: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label1": "true",
+								"label2": "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-2.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label2": "true",
+							},
+						},
+					},
+				},
+			},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-2",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					NodeSelector: map[string]string{
+						"label1": "true",
+						"label2": "true",
+					},
+				},
+			},
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-2.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8082,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-2.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.2",
+								},
+							},
+						},
+					},
+				},
+			},
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
+					{
+						UUID: "rmd-workload-1",
+						ID:   "1",
+					},
+				},
+				"127.0.0.2:8082": {
+					{
+						UUID: "rmd-workload-2",
+						ID:   "2",
+					},
+				},
+			},
+			expectedRemovedNodes: []removedNodeInfo{
+				{
+					nodeName:   "example-node-2.com",
+					rmdAddress: "http://127.0.0.2:8082",
+					workloadID: "2",
+				},
+			},
+
+			expectedError: false,
+		},
+		{
+			name: "test case 5 - workload to be deleted from 1 node, nodes and nodeselector conflict, nodeselector takes precedence",
+			request: reconcile.Request{
+				types.NamespacedName{
+					Namespace: "default",
+					Name:      "rmd-workload-2",
+				},
+			},
+			rmdNodeData: []string{"example-node.com", "example-node-2.com"},
+			rmdNodes: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label1": "true",
+								"label2": "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-node-2.com",
+							Namespace: "default",
+							Labels: map[string]string{
+								"label2": "true",
+							},
+						},
+					},
+				},
+			},
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-2",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					Nodes: []string{"example-node.com"},
+					NodeSelector: map[string]string{
+						"label1": "true",
+						"label2": "true",
+					},
+				},
+			},
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-2.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8082,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-2.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.2",
+								},
+							},
+						},
+					},
+				},
+			},
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
+					{
+						UUID: "rmd-workload-1",
+						ID:   "1",
+					},
+				},
+				"127.0.0.2:8082": {
+					{
+						UUID: "rmd-workload-2",
+						ID:   "2",
+					},
+				},
+			},
+			expectedRemovedNodes: []removedNodeInfo{
+				{
+					nodeName:   "example-node-2.com",
+					rmdAddress: "http://127.0.0.2:8082",
+					workloadID: "2",
+				},
+			},
 			expectedError: false,
 		},
 	}
@@ -1766,14 +2251,21 @@ func TestFindRemovedNodes(t *testing.T) {
 			}
 		}
 
+		for i := range tc.rmdNodes.Items {
+			err = r.client.Create(context.TODO(), &tc.rmdNodes.Items[i])
+			if err != nil {
+				t.Fatalf("Failed to create rmd node")
+			}
+		}
+
 		returnedError := false
 		r.rmdNodeData.RmdNodeList = tc.rmdNodeData
 		removedNodes, err := r.findRemovedNodes(tc.request, tc.rmdWorkload)
 		if err != nil {
 			returnedError = true
 		}
-		if !reflect.DeepEqual(tc.expectedNodes, removedNodes) {
-			t.Errorf("%v failed: Expected:  %v, Got:  %v\n", tc.name, tc.expectedNodes, removedNodes)
+		if !reflect.DeepEqual(tc.expectedRemovedNodes, removedNodes) {
+			t.Errorf("%v failed: Expected:  %v, Got:  %v\n", tc.name, tc.expectedRemovedNodes, removedNodes)
 		}
 		if tc.expectedError != returnedError {
 			t.Errorf("%v failed: Expected error: %v, Error gotten: %v\n", tc.name, tc.expectedError, returnedError)
