@@ -100,10 +100,53 @@ spec:
                 description: WorkloadState defines state of a workload for a single
                   node
                 properties:
+                  coreIds:
+                    items:
+                      type: string
+                    type: array
                   cosName:
                     type: string
                   id:
                     type: string
+                  plugins:
+                    description: Plugins contains individual RMD plugin types
+                    properties:
+                      pstate:
+                        description: Pstate defines pstate parametes for workload
+                        properties:
+                          monitoring:
+                            type: string
+                          ratio:
+                            type: string
+                        required:
+                        type: object
+                    required:
+                    type: object
+                  policy:
+                    type: string
+                  rdt:
+                    description: Rdt related settings (Cache, MBA)
+                    properties:
+                      cache:
+                        description: Cache defines cache parameters for workload
+                        properties:
+                          max:
+                            type: integer
+                          min:
+                            type: integer
+                        required:
+                        type: object
+                      mba:
+                        description: Mba defines mba parameters for workload
+                        properties:
+                          mbps:
+                            type: integer
+                          percentage:
+                            type: integer
+                        required:
+                        type: object
+                    required:
+                    type: object
                   response:
                     type: string
                   status:

@@ -334,9 +334,15 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 				WorkloadStates: map[string]intelv1alpha1.WorkloadState{
 					"example-node.com": {
 						Response: "Success: 200",
+						ID:       "1",
+						CosName:  "0_49_guaranteed",
+						Status:   "Successful",
 					},
 					"example-node-2.com": {
 						Response: "Success: 200",
+						ID:       "1",
+						CosName:  "0_49_guaranteed",
+						Status:   "Successful",
 					},
 				},
 			},
@@ -387,6 +393,152 @@ func TestRmdWorkloadControllerReconcile(t *testing.T) {
 			},
 			expectedRmdWorkloadStatus: &intelv1alpha1.RmdWorkloadStatus{
 				WorkloadStates: nil,
+			},
+			expectedError: false,
+		},
+		{
+			name: "test case 3 - 3 RMD Node States, 3 RMD pods, workload present on all, 2 nodes in rmdWorkload spec",
+			rmdWorkload: &intelv1alpha1.RmdWorkload{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rmd-workload-1",
+					Namespace: "default",
+				},
+				Spec: intelv1alpha1.RmdWorkloadSpec{
+					Nodes: []string{"example-node.com", "example-node-2.com"},
+				},
+			},
+			rmdNodeData: []string{"example-node.com", "example-node-1.com", "example-node-2.com"},
+			rmdPods: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.3",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-2.com",
+							Namespace: "default",
+							Labels:    map[string]string{"name": "rmd-pod"},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8080,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-2.com",
+						},
+						Status: corev1.PodStatus{
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.2",
+								},
+							},
+						},
+					},
+				},
+			},
+			getWorkloadsResponse: map[string]([]rmdtypes.RDTWorkLoad){
+				"127.0.0.1:8080": {
+					{
+						UUID:    "rmd-workload-1",
+						ID:      "1",
+						CosName: "0_49_guaranteed",
+						Status:  "Successful",
+						CoreIDs: []string{"0", "49"},
+						Policy:  "Gold",
+					},
+				},
+				"127.0.0.2:8080": {
+					{
+						UUID:    "rmd-workload-1",
+						ID:      "1",
+						CosName: "0_49_guaranteed",
+						Status:  "Successful",
+						CoreIDs: []string{"0", "49"},
+						Policy:  "Silver",
+					},
+				},
+				"127.0.0.3:8080": {
+					{
+						UUID:    "rmd-workload-2",
+						ID:      "2",
+						CosName: "0_49_guaranteed",
+						Status:  "Successful",
+					},
+				},
+			},
+			expectedRmdWorkloadStatus: &intelv1alpha1.RmdWorkloadStatus{
+				WorkloadStates: map[string]intelv1alpha1.WorkloadState{
+					"example-node.com": {
+						Response: "Success: 200",
+						ID:       "1",
+						CosName:  "0_49_guaranteed",
+						Status:   "Successful",
+						CoreIds:  []string{"0", "49"},
+						Policy:   "Gold",
+					},
+					"example-node-2.com": {
+						Response: "Success: 200",
+						ID:       "1",
+						CosName:  "0_49_guaranteed",
+						Status:   "Successful",
+						CoreIds:  []string{"0", "49"},
+						Policy:   "Silver",
+					},
+				},
 			},
 			expectedError: false,
 		},

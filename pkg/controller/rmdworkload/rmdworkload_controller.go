@@ -2,10 +2,8 @@ package rmdworkload
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
-	"time"
-
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
 	"github.com/intel/rmd-operator/pkg/state"
@@ -22,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"strings"
+	"time"
 )
 
 const (
@@ -405,6 +405,51 @@ func (r *ReconcileRmdWorkload) addWorkload(address string, rmdWorkload *intelv1a
 	if err != nil {
 		logger.Error(err, "Failed to post workload to RMD", "Response:", response)
 	}
+	err = r.updateRmdWorkloadStatus(rmdWorkload, nodeName, address, response)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileRmdWorkload) updateWorkload(address string, rmdWorkload *intelv1alpha1.RmdWorkload, nodeName string) error {
+	logger := log.WithName("updateWorkload")
+	response, err := r.rmdClient.PatchWorkload(rmdWorkload, address, rmdWorkload.Status.WorkloadStates[nodeName].ID)
+	if err != nil {
+		logger.Error(err, "Failed to patch workload to RMD")
+		// do not requeue
+	}
+	err = r.updateRmdWorkloadStatus(rmdWorkload, nodeName, address, response)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ReconcileRmdWorkload) removeWorkload(rmdWorkload *intelv1alpha1.RmdWorkload, removedNodes []removedNodeInfo) error {
+	logger := log.WithName("removeWorkload")
+	for _, removedNode := range removedNodes {
+		err := r.rmdClient.DeleteWorkload(removedNode.rmdAddress, removedNode.workloadID)
+		if err != nil {
+			logger.Error(err, "Failed to delete workload from RMD")
+			return err
+		}
+		delete(rmdWorkload.Status.WorkloadStates, removedNode.nodeName)
+	}
+
+	err := r.client.Status().Update(context.TODO(), rmdWorkload)
+	if err != nil {
+		logger.Error(err, "Failed to update RmdWorkload")
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileRmdWorkload) updateRmdWorkloadStatus(rmdWorkload *intelv1alpha1.RmdWorkload, nodeName, address, response string) error {
+	logger := log.WithName("updateRmdWorkloadStatus")
+
 	if len(rmdWorkload.Status.WorkloadStates) == 0 {
 		workloadStates := make(map[string]intelv1alpha1.WorkloadState)
 		rmdWorkload.Status.WorkloadStates = workloadStates
@@ -425,6 +470,49 @@ func (r *ReconcileRmdWorkload) addWorkload(address string, rmdWorkload *intelv1a
 		workloadState.ID = workload.ID
 		workloadState.CosName = workload.CosName
 		workloadState.Status = workload.Status
+		workloadState.CoreIds = workload.CoreIDs
+		workloadState.Policy = workload.Policy
+		workloadState.Rdt = intelv1alpha1.Rdt{}
+		workloadState.Rdt.Cache = intelv1alpha1.Cache{}
+		if workload.Rdt.Cache.Max != nil {
+			workloadState.Rdt.Cache.Max = int(*workload.Rdt.Cache.Max)
+		}
+		if workload.Rdt.Cache.Min != nil {
+			workloadState.Rdt.Cache.Min = int(*workload.Rdt.Cache.Min)
+		}
+		workloadState.Rdt.Mba = intelv1alpha1.Mba{}
+		if workload.Rdt.Mba.Percentage != nil {
+			workloadState.Rdt.Mba.Percentage = int(*workload.Rdt.Mba.Percentage)
+		}
+		if workload.Rdt.Mba.Mbps != nil {
+			workloadState.Rdt.Mba.Mbps = int(*workload.Rdt.Mba.Mbps)
+		}
+
+		if len(workload.Plugins) != 0 {
+			pluginsData, err := json.Marshal(workload.Plugins)
+			if err != nil {
+				return err
+			}
+			pluginsMap := make(map[string]map[string]interface{})
+			err = json.Unmarshal(pluginsData, &pluginsMap)
+			if err != nil {
+				return err
+			}
+			// Look for pstate data and add to workloadMap
+			if pstateMap, ok := pluginsMap["pstate"]; ok {
+				if ratio, ok := pstateMap["ratio"]; ok {
+					if ratio != nil {
+						workloadState.Plugins.Pstate.Ratio = fmt.Sprintf("%f", ratio)
+					}
+				}
+				if monitoring, ok := pstateMap["monitoring"]; ok {
+					if monitoring != nil {
+						workloadState.Plugins.Pstate.Ratio = fmt.Sprintf("%f", monitoring)
+					}
+				}
+			}
+		}
+
 		rmdWorkload.Status.WorkloadStates[nodeName] = workloadState
 	} else {
 		// RMD could not apply the specified workload, find the corresponding pod
@@ -437,49 +525,6 @@ func (r *ReconcileRmdWorkload) addWorkload(address string, rmdWorkload *intelv1a
 	}
 
 	err = r.client.Status().Update(context.TODO(), rmdWorkload)
-	if err != nil {
-		logger.Error(err, "Failed to update RmdWorkload with workload ID")
-		return err
-	}
-	return nil
-}
-
-func (r *ReconcileRmdWorkload) updateWorkload(address string, rmdWorkload *intelv1alpha1.RmdWorkload, nodeName string) error {
-	logger := log.WithName("updateWorkload")
-	response, err := r.rmdClient.PatchWorkload(rmdWorkload, address, rmdWorkload.Status.WorkloadStates[nodeName].ID)
-	if err != nil {
-		logger.Error(err, "Failed to patch workload to RMD")
-		// do not requeue
-	}
-	if len(rmdWorkload.Status.WorkloadStates) == 0 {
-		workloadStates := make(map[string]intelv1alpha1.WorkloadState)
-		rmdWorkload.Status.WorkloadStates = workloadStates
-	}
-
-	var workloadStatusState = rmdWorkload.Status.WorkloadStates[nodeName]
-	workloadStatusState.Response = response
-	rmdWorkload.Status.WorkloadStates[nodeName] = workloadStatusState
-
-	err = r.client.Status().Update(context.TODO(), rmdWorkload)
-	if err != nil {
-		logger.Error(err, "Failed to update RmdWorkload")
-		return err
-	}
-	return nil
-}
-
-func (r *ReconcileRmdWorkload) removeWorkload(rmdWorkload *intelv1alpha1.RmdWorkload, removedNodes []removedNodeInfo) error {
-	logger := log.WithName("removeWorkload")
-	for _, removedNode := range removedNodes {
-		err := r.rmdClient.DeleteWorkload(removedNode.rmdAddress, removedNode.workloadID)
-		if err != nil {
-			logger.Error(err, "Failed to delete workload from RMD")
-			return err
-		}
-		delete(rmdWorkload.Status.WorkloadStates, removedNode.nodeName)
-	}
-
-	err := r.client.Status().Update(context.TODO(), rmdWorkload)
 	if err != nil {
 		logger.Error(err, "Failed to update RmdWorkload")
 		return err

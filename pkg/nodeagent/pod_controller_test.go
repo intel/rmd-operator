@@ -266,9 +266,10 @@ func TestPodControllerReconcile(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: intelv1alpha1.RmdWorkloadSpec{
-					Nodes:   []string{"example-node-1.com"},
-					CoreIds: []string{"0"},
-					Policy:  "gold",
+					Nodes:        []string{"example-node-1.com"},
+					NodeSelector: map[string]string{},
+					CoreIds:      []string{"0"},
+					Policy:       "gold",
 					Rdt: intelv1alpha1.Rdt{
 						Cache: intelv1alpha1.Cache{
 							Max: 2,
@@ -497,9 +498,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"0"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"0"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 2,
@@ -514,9 +516,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"2", "3"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"2", "3"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 2,
@@ -620,9 +623,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"0"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"0"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 2,
@@ -637,9 +641,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"2", "3"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"2", "3"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 2,
@@ -654,9 +659,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"8", "9", "10"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"8", "9", "10"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 3,
@@ -742,9 +748,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"0", "11"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"0", "11"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 2,
@@ -765,9 +772,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"13"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"13"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 1,
@@ -835,8 +843,9 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"8", "9", "10", "11", "12"},
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"8", "9", "10", "11", "12"},
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 5,
@@ -922,8 +931,9 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"8", "9", "10", "11", "12"},
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"8", "9", "10", "11", "12"},
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 2,
@@ -938,9 +948,10 @@ func TestBuildRmdWorkload(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: intelv1alpha1.RmdWorkloadSpec{
-						Nodes:   []string{"example-node-1.com"},
-						CoreIds: []string{"14"},
-						Policy:  "gold",
+						Nodes:        []string{"example-node-1.com"},
+						NodeSelector: map[string]string{},
+						CoreIds:      []string{"14"},
+						Policy:       "gold",
 						Rdt: intelv1alpha1.Rdt{
 							Cache: intelv1alpha1.Cache{
 								Max: 1,
