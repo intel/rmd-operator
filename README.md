@@ -319,8 +319,16 @@ Status:
       Response:  Success: 200
       Status:    Successful
     worker-node-2:
+      Core Ids:
+        0-3
+        6
+        8
       Cos Name:  0-3_6_8-guarantee
       Id:        1
+      Rdt:
+        Cache:
+          Max:  2
+          Min:  2
       Response:  Success: 200
       Status:    Successful
 ````
