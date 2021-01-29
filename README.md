@@ -314,8 +314,16 @@ Spec:
 Status:
   Workload States:
     worker-node-1:
+      Core Ids:
+        0-3
+        6
+        8
       Cos Name:  0-3_6_8-guarantee
       Id:        1
+      Rdt:
+        Cache:
+          Max:  2
+          Min:  2
       Response:  Success: 200
       Status:    Successful
     worker-node-2:
@@ -386,7 +394,7 @@ This example displays the RmdNodeState for worker-node-1. It shows that this nod
 ## Pod Requesting Cache Ways
 It is also possible for the operator to create an RmdWorkload **automatically** by interpreting resource requests and [annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) in the pod spec.
 
-**Warning**: Automatic creation of workloads may be unstable and is **not recommended in production**. However, testing and feedback is welcomed to help stabilize this approach for future releases.
+### Warning: This approach is experimental and is not recommended in production. 
 
 Under this approach, the user creates a pod with a container requesting **exclusive** CPUs from the Kubelet CPU Manager and available cache ways. The pod must also contain RMD specific pod annotations to describe the desired RmdWorkload.
 It is then the responsiblity of the operator and the node agent to do the following:
@@ -466,14 +474,82 @@ Spec:
 Status:
   Workload States:
     worker-node-1:
+      Core Ids:
+        1
+        2
+        49
       Cos Name:  1_2_49-guarantee
       Id:        22
+      Plugins:
+        Pstate:
+          Monitoring:
+          Ratio:
+      Policy:
+      Rdt:
+        Cache:
+          Max:  2
+          Min:  2
+        Mba:
+          Mbps: 0
+          Percentage:  0
       Response:  Success: 200
       Status:    Successful
 `````
 This output displays the RmdWorkload which has been created succesfully based on the pod spec created above.
 Note that CPUs 1,2 and 49 have been allocated to the container by the CPU Manager. As this RmdWorkload was created automatically via the pod spec, **the user has no control over which CPUs are used by the container**. 
 In order to explicitly define which CPUs are to be allocated cache ways, the RmdWorkload must be created directly via the RmdWorkload spec and not the pod spec.
+
+If **unsuccessful**, the RmdWorkload will be created with the naming convention `<pod-name>-rmd-workload-<container-name>` and the reason for failure of the workload to post to RMD will be displayed in the RmdWorkload status.
+
+`kubectl describe rmdworkload pod-guaranteed-cache-rmdworkload-container1`
+
+````
+Name:         pod-guaranteed-cache-rmd-workload-container1
+Namespace:    default
+API Version:  intel.com/v1alpha1
+Kind:         RmdWorkload
+Spec:
+  Core Ids:
+    1
+    2
+    49
+  Nodes:
+    worker-node-1
+  Plugins:
+    Pstate:
+      Monitoring:
+      Ratio:
+  Policy:
+  Rdt:
+    Cache:
+      Max:  2
+      Min:  2
+    Mba:
+      Mbps: 0
+      Percentage:  0
+Status:
+  Workload States:
+    worker-node-1:
+      Core IDs: <nil>
+      Cos Name:  
+      Id:        
+       Plugins:
+        Pstate:
+          Monitoring:
+          Ratio:
+      Policy:
+      Rdt:
+        Cache:
+          Max:  0
+          Min:  0
+        Mba:
+          Mbps:        0
+          Percentage:  0
+      Response:  Fail: Failed to validate workload. Reason: Workload validation in database failed. Details: CPU list [1] has been assigned
+      Status:    
+`````
+This output displays the RmdWorkload which has been created based on the pod spec created above, however the corresponding workload has not been succesfully posted to RMD. The reason why this failure occurred is reflected in the `Response` field of the RmdWorkload status for `worker-node-1`.
+
 
 ### Example: Multiple Containers
 See `samples/pod-multi-guaranteed-cache-mba.yaml`
@@ -559,8 +635,23 @@ Spec:
 Status:
   Workload States:
     worker-node-1:
+      Core Ids:
+        1
+        49
       Cos Name:  1_49-guarantee
       Id:        23
+            Plugins:
+        Pstate:
+          Monitoring:
+          Ratio:
+      Policy:
+      Rdt:
+        Cache:
+          Max:  2
+          Min:  2
+        Mba:
+          Mbps: 0
+          Percentage:  0
       Response:  Success: 200
       Status:    Successful
 
@@ -595,8 +686,23 @@ Spec:
 Status:
   Workload States:
     worker-node-1:
+      Core Ids:
+        2
+        50
       Cos Name:  2_50-guarantee
       Id:        24
+      Plugins:
+        Pstate:
+          Monitoring:
+          Ratio:
+      Policy:
+      Rdt:
+        Cache:
+          Max:  2
+          Min:  2
+        Mba:
+          Mbps: 0
+          Percentage:  50
       Response:  Success: 200
       Status:    Successful
 ````
@@ -627,18 +733,9 @@ When an RmdWorkload is created by the operator based on a pod spec, that pod obj
 
 Creating an RmdWorkload automatically via a pod spec is far less reliable than creating directly via an RmdWorkload spec. This is because the user no longer has the ability to explicitly define the specific CPUs on which the RmdWorkload will ultimately be configured.
 CPU allocation for containers is the responsibility of the CPU Manager in Kubelet. As a result, the RmdWorkload will only be created **after** the pod is admitted. Once the RmdWorkload is created by the operator, the RmdWorkload information is sent to RMD in the form of an HTTPS post request. 
-Should the post to RMD fail at this point for any reason, the operator will then terminate the pod and by association the RmdWorkload.
+Should the post to RMD fail at this point, the reason for failure will be reflected in the RmdWorkload status. 
 
-To discover why the pod was terminated by the operator it is necessary to check the opertor pod's logs.
-
-#### Example
-
-`kubectl logs intel-rmd-operator-6464fcfb94-4cvqn | grep guaranteed-cache-pod-9wbk9 -A 1`
-
-#### Example Output
-
-`{"level":"info","ts":1591601591.2043474,"logger":"controller_rmdworkload","msg":"Workload not found on RMD instance, create.","Request.Namespace":"default","Request.Name":"rmd-workload-guaranteed-cache-pod-2dnwh"}
-{"level":"error","ts":1591601591.2067816,"logger":"controller_rmdworkload.postWorkload","msg":"Failed to post workload to RMD","Response:":"Fail: Failed to validate workload. Reason: Workload validation in database failed. Details: CPU list 6 has been assigned\n","error":"Response status code error"...`
+**Note:** It is important that the user always checks the RmdWorkload status after pod creation to validate that the workload has been configured correctly.
 
 ## Workflows
 ### Direct Configuration
