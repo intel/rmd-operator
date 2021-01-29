@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
 	"time"
 )
 
@@ -514,47 +513,12 @@ func (r *ReconcileRmdWorkload) updateRmdWorkloadStatus(rmdWorkload *intelv1alpha
 		}
 
 		rmdWorkload.Status.WorkloadStates[nodeName] = workloadState
-	} else {
-		// RMD could not apply the specified workload, find the corresponding pod
-		// and delete it.
-		err := r.deletePod(rmdWorkloadName, rmdWorkload.GetObjectMeta().GetNamespace())
-		if err != nil {
-			return err
-
-		}
 	}
-
 	err = r.client.Status().Update(context.TODO(), rmdWorkload)
 	if err != nil {
 		logger.Error(err, "Failed to update RmdWorkload")
 		return err
 	}
 
-	return nil
-}
-
-func (r *ReconcileRmdWorkload) deletePod(rmdWorkloadName string, namespace string) error {
-	logger := log.WithName("deletePod")
-
-	nameSlice := strings.Split(rmdWorkloadName, rmdWorkloadNameConst)
-	podNamespacedName := types.NamespacedName{
-		Namespace: namespace,
-		Name:      nameSlice[0],
-	}
-	pod := &corev1.Pod{}
-
-	err := r.client.Get(context.TODO(), podNamespacedName, pod)
-	if err != nil {
-		logger.Error(err, "Failed to get pod")
-		if errors.IsNotFound(err) {
-			return nil
-		}
-	}
-	err = r.client.Delete(context.TODO(), pod)
-	if err != nil {
-		logger.Error(err, "Failed to delete pod")
-		return err
-
-	}
 	return nil
 }
