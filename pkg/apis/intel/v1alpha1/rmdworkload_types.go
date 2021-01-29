@@ -38,10 +38,14 @@ type Pstate struct {
 
 // WorkloadState defines state of a workload for a single node
 type WorkloadState struct {
-	Response string `json:"response"`
-	ID       string `json:"id"`
-	CosName  string `json:"cosName"`
-	Status   string `json:"status"`
+	Response string   `json:"response"`
+	ID       string   `json:"id"`
+	CosName  string   `json:"cosName"`
+	Status   string   `json:"status"`
+	CoreIds  []string `json:"coreIds"`
+	Policy   string   `json:"policy,omniempty"`
+	Rdt      Rdt      `json:"rdt"`
+	Plugins  Plugins  `json:"plugins,omniempty"`
 }
 
 // RmdWorkloadSpec defines the desired state of RmdWorkload
