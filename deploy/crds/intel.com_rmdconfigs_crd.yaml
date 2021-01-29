@@ -35,6 +35,8 @@ spec:
         spec:
           description: RmdConfigSpec defines the desired state of RmdConfig
           properties:
+            deployNodeAgent:
+              type: boolean
             rmdImage:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after

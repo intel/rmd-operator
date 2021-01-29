@@ -143,11 +143,20 @@ func (r *ReconcileRmdConfig) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	// Create Node Agent Daemonset if not present
-	err = r.createDaemonSetIfNotPresent(rmdConfig, nodeAgentDaemonSetPath)
-	if err != nil {
-		reqLogger.Info("Failed to create RMD Node Agent DaemonSet from manifest", "path", nodeAgentDaemonSetPath)
-		return reconcile.Result{}, err
+	if rmdConfig.Spec.DeployNodeAgent {
+		// Create Node Agent Daemonset if not present
+		err = r.createDaemonSetIfNotPresent(rmdConfig, nodeAgentDaemonSetPath)
+		if err != nil {
+			reqLogger.Info("Failed to create RMD Node Agent DaemonSet from manifest", "path", nodeAgentDaemonSetPath)
+			return reconcile.Result{}, err
+		}
+	} else {
+		// If Node Agent Daemon exists and is not requested in rmdconfig, delete.
+		err = r.deleteDaemonSetIfPresent(nodeAgentNameConst)
+		if err != nil {
+			reqLogger.Info("Failed to delete Node Agent DaemonSet")
+			return reconcile.Result{}, err
+		}
 	}
 
 	err = r.client.List(context.TODO(), labelledNodeList, client.MatchingLabels(listOption))
@@ -167,14 +176,19 @@ func (r *ReconcileRmdConfig) Reconcile(request reconcile.Request) (reconcile.Res
 			reqLogger.Info("Failed to create node state for node", "node name", node.GetObjectMeta().GetName())
 			return reconcile.Result{}, err
 		}
-
-		// Discover L3 cache ways on Node
-		err = r.updateNodeStatusCapacity(&node)
-		if err != nil {
-			reqLogger.Info("Failed to update cache ways for node", "node name", node.GetObjectMeta().GetName())
-			return reconcile.Result{}, err
+		if rmdConfig.Spec.DeployNodeAgent {
+			// Discover L3 cache ways on Node
+			err = r.updateNodeStatusCapacity(&node)
+			if err != nil {
+				reqLogger.Info("Failed to update cache ways for node", "node name", node.GetObjectMeta().GetName())
+				return reconcile.Result{}, err
+			}
+		} else {
+			err = r.setZeroCapacity(&node)
+			if err != nil {
+				reqLogger.Info("Failed to update cache ways for node", "node name", node.GetObjectMeta().GetName())
+			}
 		}
-
 		// Add new node state data to RmdNodeData object
 		r.rmdNodeData.UpdateRmdNodeData(node.Name)
 	}
@@ -255,18 +269,10 @@ func (r *ReconcileRmdConfig) updateNodeStatusCapacity(rmdNode *corev1.Node) erro
 	availableCacheWays, err := r.rmdClient.GetAvailableCacheWays(address)
 	if err != nil {
 		// Cannot access l3 cache extended resources so set to zero.
-		for extendedResource := range rmdNode.Status.Capacity {
-			if extendedResource.String() == l3Cache {
-				rmdNode.Status.Capacity[extendedResource] = resource.MustParse("0")
-			}
-		}
-
-		err = r.client.Status().Update(context.TODO(), rmdNode)
+		err = r.setZeroCapacity(rmdNode)
 		if err != nil {
-			logger.Error(err, "failed to update the node with extended resource")
 			return err
 		}
-
 		return nil
 	}
 	// If l3_cache_ways extended resource does not exist on the node or is zero,
@@ -280,6 +286,43 @@ func (r *ReconcileRmdConfig) updateNodeStatusCapacity(rmdNode *corev1.Node) erro
 		}
 	}
 
+	return nil
+}
+
+func (r *ReconcileRmdConfig) setZeroCapacity(rmdNode *corev1.Node) error {
+	logger := log.WithName("setZeroCapacity")
+	for extendedResource := range rmdNode.Status.Capacity {
+		if extendedResource.String() == l3Cache {
+			if rmdNode.Status.Capacity[extendedResource] != resource.MustParse("0") {
+				rmdNode.Status.Capacity[extendedResource] = resource.MustParse("0")
+				break
+			}
+			return nil
+		}
+	}
+	err := r.client.Status().Update(context.TODO(), rmdNode)
+	if err != nil {
+		logger.Error(err, "failed to update the node with extended resource")
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileRmdConfig) deleteDaemonSetIfPresent(dsName string) error {
+	daemonSet := &appsv1.DaemonSet{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: dsName, Namespace: defaultNamespace}, daemonSet)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// DS not present, return without error
+			return nil
+		}
+	}
+
+	err = r.client.Delete(context.TODO(), daemonSet)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -88,6 +88,7 @@ The RmdConfig custom resource is the object that governs the overall deployment 
 The RmdConfig spec consists of:
 -   `rmdImage`: This is the name/tag given to the RMD container image that will be deployed in a DaemonSet by the operator.
 -   `rmdNodeSelector`: This is a key/value map used for defining a list of node labels that a node must satisfy in order for RMD to be deployed on it. If no `rmdNodeSelector` is defined, the default value is set to the single feature label for RDT L3 CAT (`"feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"`).
+-   `deployNodeAgent`: This is a boolean flag that tell the operator whether or not to deploy the node agent along with the RMD pod. The node agent is only necessary for requesting RDT features via the pod spec. This approach is experimental and as such, is disabled by default.
 
 The RmdConfig status represents the nodes which match the `rmdNodeSelector` and have RMD deployed.
 
@@ -102,6 +103,7 @@ spec:
     rmdImage: "rmd:latest"
     rmdNodeSelector:
         "feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"
+    deployNodeAgent: false    
 ````
 **Note:** Only one RmdConfig object is necessary per cluster. This is enforced by virtue of the default naming convention `"rmdconfig"`.
 
@@ -403,6 +405,7 @@ It is then the responsiblity of the operator and the node agent to do the follow
 *  Create the RmdWorkload object based on this information.
 
 The following criteria must be met in order for the operator to succesfully create an RmdWorkload for a container based on the pod spec.
+*  The RmdConfig `deployNodeAgent` field must be set to `true` and updated via `kubectl apply -f deploy/rmdconfig.yaml`.
 *  The container must request extended resource `intel.com/l3_cache_ways`. 
 *  The container must also [request exclusive CPUs from CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy).
 *  Pod annotations pertaining to the container requesting cache ways must be prefixed with that container's name. See example and [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
