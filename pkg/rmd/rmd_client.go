@@ -10,7 +10,7 @@ import (
 var rmdPodPath = "/rmd-manifests/rmd-ds.yaml"
 
 // NewClient creates a new client to RMD for each controller
-func NewClient() OperatorRmdClient {
+func NewClient() *OperatorRmdClient {
 	logger := log.WithName("NewClient")
 
 	tlsEnabled, err := isTLSEnabled(rmdPodPath)

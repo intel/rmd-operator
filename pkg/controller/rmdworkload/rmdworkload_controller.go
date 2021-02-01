@@ -39,13 +39,13 @@ var log = logf.Log.WithName("controller_rmdworkload")
 
 // Add creates a new RmdWorkload Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, rmdNodeData *state.RmdNodeData) error {
-	return add(mgr, newReconciler(mgr, rmdNodeData))
+func Add(mgr manager.Manager, rmdClient *rmd.OperatorRmdClient, rmdNodeData *state.RmdNodeData) error {
+	return add(mgr, newReconciler(mgr, rmdClient, rmdNodeData))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, rmdNodeData *state.RmdNodeData) reconcile.Reconciler {
-	return &ReconcileRmdWorkload{client: mgr.GetClient(), rmdClient: rmd.NewClient(), scheme: mgr.GetScheme(), rmdNodeData: rmdNodeData}
+func newReconciler(mgr manager.Manager, rmdClient *rmd.OperatorRmdClient, rmdNodeData *state.RmdNodeData) reconcile.Reconciler {
+	return &ReconcileRmdWorkload{client: mgr.GetClient(), rmdClient: rmdClient, scheme: mgr.GetScheme(), rmdNodeData: rmdNodeData}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -83,7 +83,7 @@ type ReconcileRmdWorkload struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client      client.Client
-	rmdClient   rmd.OperatorRmdClient
+	rmdClient   *rmd.OperatorRmdClient
 	scheme      *runtime.Scheme
 	rmdNodeData *state.RmdNodeData
 }
