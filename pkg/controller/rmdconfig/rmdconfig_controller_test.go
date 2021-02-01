@@ -78,7 +78,8 @@ func TestRmdConfigControllerReconcile(t *testing.T) {
 					Namespace: defaultNamespace,
 				},
 				Spec: intelv1alpha1.RmdConfigSpec{
-					RmdImage: "rmd:latest",
+					RmdImage:        "rmd:latest",
+					DeployNodeAgent: true,
 					RmdNodeSelector: map[string]string{
 						rdtCatLabel: "true",
 					},
@@ -157,7 +158,8 @@ func TestRmdConfigControllerReconcile(t *testing.T) {
 					Namespace: defaultNamespace,
 				},
 				Spec: intelv1alpha1.RmdConfigSpec{
-					RmdImage: "rmd:latest",
+					RmdImage:        "rmd:latest",
+					DeployNodeAgent: true,
 				},
 			},
 			nodeList: &corev1.NodeList{
@@ -239,6 +241,7 @@ func TestRmdConfigControllerReconcile(t *testing.T) {
 						rdtCatLabel: "true",
 						"feature.node.kubernetes.io/cpu-sstbf.enabled": "true",
 					},
+					DeployNodeAgent: true,
 				},
 			},
 			nodeList: &corev1.NodeList{
@@ -335,6 +338,7 @@ func TestRmdConfigControllerReconcile(t *testing.T) {
 					RmdNodeSelector: map[string]string{
 						rdtCatLabel: "true",
 					},
+					DeployNodeAgent: true,
 				},
 			},
 			nodeList: &corev1.NodeList{
@@ -428,6 +432,384 @@ func TestRmdConfigControllerReconcile(t *testing.T) {
 			rmdNodeStatesCreated: 2,
 			rmdDSCreated:         true,
 			nodeAgentDSCreated:   true,
+			expectedRmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+					},
+				},
+				Status: intelv1alpha1.RmdConfigStatus{
+					Nodes: []string{"example-node-1", "example-node-3"},
+				},
+			},
+		},
+		{
+			name: "test case 5 - single node with nodeselector label, no node agent",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage:        "rmd:latest",
+					DeployNodeAgent: false,
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+					},
+				},
+			},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-1",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+							},
+						},
+					},
+				},
+			},
+			podList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: defaultNamespace,
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			rmdNodeStatesCreated: 1,
+			rmdDSCreated:         true,
+			nodeAgentDSCreated:   false,
+			expectedRmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+					},
+				},
+				Status: intelv1alpha1.RmdConfigStatus{
+					Nodes: []string{"example-node-1"},
+				},
+			},
+		},
+		{
+			name: "test case 6 - single node with RDT L3 CAT label. No RmdNodeSelector defined - default set to RDT L3 CAT label, no node agent",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage:        "rmd:latest",
+					DeployNodeAgent: false,
+				},
+			},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-1",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+							},
+						},
+					},
+				},
+			},
+			podList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: defaultNamespace,
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			rmdNodeStatesCreated: 1,
+			rmdDSCreated:         true,
+			nodeAgentDSCreated:   false,
+			expectedRmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+					},
+				},
+				Status: intelv1alpha1.RmdConfigStatus{
+					Nodes: []string{"example-node-1"},
+				},
+			},
+		},
+
+		{
+			name: "test case 7 - 3 nodes, 1 with all labels, 2 with some, no node agent",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+						"feature.node.kubernetes.io/cpu-sstbf.enabled": "true",
+					},
+					DeployNodeAgent: false,
+				},
+			},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-1",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+								"feature.node.kubernetes.io/cpu-sstbf.enabled": "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-2",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-3",
+							Labels: map[string]string{
+								"feature.node.kubernetes.io/cpu-sstbf.enabled": "true",
+							},
+						},
+					},
+				},
+			},
+			podList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: defaultNamespace,
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			rmdNodeStatesCreated: 1,
+			rmdDSCreated:         true,
+			nodeAgentDSCreated:   false,
+			expectedRmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+					},
+				},
+				Status: intelv1alpha1.RmdConfigStatus{
+					Nodes: []string{"example-node-1"},
+				},
+			},
+		},
+		{
+			name: "test case 8 - 3 nodes, 2 with RmdNodeSelector label, no node agent",
+			rmdConfig: &intelv1alpha1.RmdConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      rmdConfigConst,
+					Namespace: defaultNamespace,
+				},
+				Spec: intelv1alpha1.RmdConfigSpec{
+					RmdImage: "rmd:latest",
+					RmdNodeSelector: map[string]string{
+						rdtCatLabel: "true",
+					},
+					DeployNodeAgent: false,
+				},
+			},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-1",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-2",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-node-3",
+							Labels: map[string]string{
+								rdtCatLabel: "true",
+							},
+						},
+					},
+				},
+			},
+			podList: &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-abcde",
+							Namespace: defaultNamespace,
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-1",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-fghij",
+							Namespace: defaultNamespace,
+							Labels: map[string]string{
+								"name": "rmd-pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
+								},
+							},
+							NodeName: "example-node-3",
+						},
+						Status: corev1.PodStatus{
+							PodIP: "127.0.0.1",
+							PodIPs: []corev1.PodIP{
+								{
+									IP: "127.0.0.1",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			rmdNodeStatesCreated: 2,
+			rmdDSCreated:         true,
+			nodeAgentDSCreated:   false,
 			expectedRmdConfig: &intelv1alpha1.RmdConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      rmdConfigConst,
