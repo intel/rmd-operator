@@ -14,6 +14,7 @@ import (
 
 	"github.com/intel/rmd-operator/pkg/apis"
 	"github.com/intel/rmd-operator/pkg/controller"
+	"github.com/intel/rmd-operator/pkg/rmd"
 	"github.com/intel/rmd-operator/pkg/state"
 	"github.com/intel/rmd-operator/version"
 
@@ -111,8 +112,11 @@ func main() {
 	// Create new RMD Node Data object
 	rmdNodeData := state.NewRmdNodeData()
 
+	//Create RMD client
+	rmdClient := rmd.NewClient()
+
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr, rmdNodeData); err != nil {
+	if err := controller.AddToManager(mgr, rmdClient, rmdNodeData); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

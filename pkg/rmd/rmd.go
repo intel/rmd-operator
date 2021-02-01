@@ -45,18 +45,18 @@ type OperatorRmdClient struct {
 }
 
 // NewOperatorRmdClient returns a TLS client to RMD
-func NewOperatorRmdClient() (OperatorRmdClient, error) {
+func NewOperatorRmdClient() (*OperatorRmdClient, error) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
-		return OperatorRmdClient{}, err
+		return &OperatorRmdClient{}, err
 	}
 	err = verifyKeyLength(cert)
 	if err != nil {
-		return OperatorRmdClient{}, err
+		return &OperatorRmdClient{}, err
 	}
 	caCert, err := ioutil.ReadFile(caPath)
 	if err != nil {
-		return OperatorRmdClient{}, err
+		return &OperatorRmdClient{}, err
 	}
 
 	caCertPool := x509.NewCertPool()
@@ -81,7 +81,7 @@ func NewOperatorRmdClient() (OperatorRmdClient, error) {
 	rmdClient := &OperatorRmdClient{
 		client: client,
 	}
-	return *rmdClient, nil
+	return rmdClient, nil
 }
 
 func verifyKeyLength(cert tls.Certificate) error {
@@ -101,12 +101,12 @@ func verifyKeyLength(cert tls.Certificate) error {
 }
 
 // NewDefaultOperatorRmdClient returns a default client for testing and debugging
-func NewDefaultOperatorRmdClient() OperatorRmdClient {
+func NewDefaultOperatorRmdClient() *OperatorRmdClient {
 	defaultClient := &http.Client{}
 	rmdClient := &OperatorRmdClient{
 		client: defaultClient,
 	}
-	return *rmdClient
+	return rmdClient
 }
 
 // UpdateNodeStatusWorkload populates WorkloadMap with workload data for RmdNodeState
