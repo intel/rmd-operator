@@ -2,12 +2,12 @@ package rmd
 
 import (
 	"io/ioutil"
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-var rmdPodPath = "/rmd-manifests/rmd-pod.yaml"
+var rmdPodPath = "/rmd-manifests/rmd-ds.yaml"
 
 // NewClient creates a new client to RMD for each controller
 func NewClient() OperatorRmdClient {
@@ -44,17 +44,17 @@ func isTLSEnabled(path string) (bool, error) {
 		return false, err
 	}
 
-	rmdPod := obj.(*corev1.Pod)
-	err = errors.NewServiceUnavailable("container not found in rmd pod manifest")
-	if len(rmdPod.Spec.Containers) == 0 {
+	rmdDS := obj.(*appsv1.DaemonSet)
+	err = errors.NewServiceUnavailable("container not found in rmd ds manifest")
+	if len(rmdDS.Spec.Template.Spec.Containers) == 0 {
 		return false, err
 	}
-	if len(rmdPod.Spec.Containers[0].Ports) == 0 {
+	if len(rmdDS.Spec.Template.Spec.Containers[0].Ports) == 0 {
 		return false, err
 	}
 
 	// Check if container port is set to TLS enabled port 8443
-	if rmdPod.Spec.Containers[0].Ports[0].ContainerPort == 8443 {
+	if rmdDS.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort == 8443 {
 		return true, nil
 	}
 

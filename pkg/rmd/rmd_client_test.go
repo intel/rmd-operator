@@ -2,6 +2,7 @@ package rmd
 
 import (
 	"io/ioutil"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -13,28 +14,32 @@ import (
 func TestNewClient(t *testing.T) {
 	tcases := []struct {
 		name            string
-		rmdPod          *corev1.Pod
+		rmdDS           *appsv1.DaemonSet
 		validKeyLength  bool
 		expectedDefault bool
 		expectedErr     bool
 	}{
 		{
 			name: "HTTPS port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8443,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
 								},
 							},
 						},
@@ -47,21 +52,25 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "HTTP port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8081,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
 								},
 							},
 						},
@@ -74,21 +83,25 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "random port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 80,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 80,
+										},
+									},
 								},
 							},
 						},
@@ -101,18 +114,22 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "no port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{},
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{},
+							},
+						},
 					},
 				},
 			},
@@ -122,16 +139,20 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "no container",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{},
+					},
 				},
-				Spec: corev1.PodSpec{},
 			},
 			validKeyLength:  true,
 			expectedDefault: true,
@@ -139,21 +160,25 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "HTTPS port - short key",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8443,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
 								},
 							},
 						},
@@ -166,21 +191,25 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "HTTP port - short key",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8081,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
 								},
 							},
 						},
@@ -193,21 +222,25 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "random port - short key",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 80,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 80,
+										},
+									},
 								},
 							},
 						},
@@ -220,18 +253,22 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "no port - short key",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{},
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{},
+							},
+						},
 					},
 				},
 			},
@@ -241,16 +278,20 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "no container - short key",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{},
+					},
 				},
-				Spec: corev1.PodSpec{},
 			},
 			validKeyLength:  false,
 			expectedDefault: true,
@@ -258,9 +299,9 @@ func TestNewClient(t *testing.T) {
 		},
 	}
 	for _, tc := range tcases {
-		content, err := yaml.Marshal(tc.rmdPod)
+		content, err := yaml.Marshal(tc.rmdDS)
 		if err != nil {
-			t.Errorf("error converting pod spec to YAML")
+			t.Errorf("error converting spec to YAML")
 		}
 		if err := ioutil.WriteFile("./testpod", content, 0666); err != nil {
 			t.Fatalf("error writing to file (%v)", err)
@@ -293,7 +334,7 @@ func TestNewClient(t *testing.T) {
 			}
 		} else {
 			if !reflect.DeepEqual(client, operatorRmdClient) {
-				t.Errorf("Case %v - Expected %v , got %v", tc.name, operatorRmdClient, client)
+				t.Errorf("Case %v - Expected %v , got %v", tc.name, &operatorRmdClient, client)
 			}
 
 		}
@@ -305,27 +346,31 @@ func TestNewClient(t *testing.T) {
 func TestIsTLSEnabled(t *testing.T) {
 	tcases := []struct {
 		name               string
-		rmdPod             *corev1.Pod
+		rmdDS              *appsv1.DaemonSet
 		expectedTLSEnabled bool
 		expectedError      bool
 	}{
 		{
 			name: "HTTPS port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8443,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8443,
+										},
+									},
 								},
 							},
 						},
@@ -337,21 +382,25 @@ func TestIsTLSEnabled(t *testing.T) {
 		},
 		{
 			name: "HTTP port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 8081,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 8081,
+										},
+									},
 								},
 							},
 						},
@@ -363,21 +412,25 @@ func TestIsTLSEnabled(t *testing.T) {
 		},
 		{
 			name: "random port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Ports: []corev1.ContainerPort{
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
 								{
-									ContainerPort: 80,
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: 80,
+										},
+									},
 								},
 							},
 						},
@@ -389,18 +442,22 @@ func TestIsTLSEnabled(t *testing.T) {
 		},
 		{
 			name: "no port",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{},
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{},
+							},
+						},
 					},
 				},
 			},
@@ -409,25 +466,33 @@ func TestIsTLSEnabled(t *testing.T) {
 		},
 		{
 			name: "no container",
-			rmdPod: &corev1.Pod{
+			rmdDS: &appsv1.DaemonSet{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "Pod",
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "rmd-example-node-1.com",
-					Namespace: "default",
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "rmd-example-node-1.com",
+							Namespace: "default",
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{},
+							},
+						},
+					},
 				},
-				Spec: corev1.PodSpec{},
 			},
 			expectedTLSEnabled: false,
 			expectedError:      true,
 		},
 	}
 	for _, tc := range tcases {
-		content, err := yaml.Marshal(tc.rmdPod)
+		content, err := yaml.Marshal(tc.rmdDS)
 		if err != nil {
-			t.Errorf("error converting pod spec to YAML")
+			t.Errorf("error converting ds spec to YAML")
 		}
 		if err := ioutil.WriteFile("./testpod", content, 0666); err != nil {
 			t.Fatalf("error writing to file (%v)", err)
