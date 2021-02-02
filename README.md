@@ -1,9 +1,30 @@
 # Intel RMD Operator
-[![Go Report Card](https://goreportcard.com/badge/github.com/csookarr/rmd-operator)](https://goreportcard.com/report/github.com/csookarr/rmd-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/intel/rmd-operator)](https://goreportcard.com/report/github.com/intel/rmd-operator)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ----------
 Kubernetes Operator designed to provision and manage Intel [Resource Management Daemon (RMD)](https://github.com/intel/rmd) instances in a Kubernetes cluster.
+----------
+
+Table of Contents
+=================
+
+   * [Intel RMD Operator](#intel-rmd-operator)
+      * [Notice: Changes Introduced for RMD Operator v0.3](#notice-changes-introduced-for-rmd-operator-v03)
+      * [Prerequisites](#prerequisites)
+      * [Setup](#setup)
+      * [Custom Resource Definitions (CRDs)](#custom-resource-definitions-crds)
+         * [RmdConfig](#rmdconfig)
+         * [RmdWorkload](#rmdworkload)
+         * [RmdNodeState](#rmdnodestate)
+      * [Recommended Approach for Use With the CPU Manager](#recommended-approach-for-use-with-the-cpu-manager)
+      * [Experimental Approach for Use With the CPU Manager](#experimental-approach-for-use-with-the-cpu-manager)
+
+## Notice: Changes Introduced for RMD Operator v0.3
+* RmdConfig CRD: This object is introduced in **v0.3**. See explanation [below](https://github.com/intel/rmd-operator/-/blob/master/README.md#L90).
+* RmdWorkload CRD: Additional spec fields `nodeSelector` see [example](#cache-nodeselector), `allCores` see [example](#cache-all-cores), `reservedCoreIds` see [example](#create-rmdworkload-1).
+* RMD Node Agent is not deployed by default. See explanation [below](https://github.com/intel/rmd-operator/-/blob/master/README.md#L96).
+* Pods requesting RDT features are no longer deleted by the operator. In **v0.2** and earlier, should a workload fail to post to RMD after being requested via a pod spec, the pod would be deleted and the RmdWorkload object was garbage collected as a result. This is no longer the case in **v0.3**. Instead, the pod is not deleted, but the reason for failure is displayed in the pod's child RmdWorkload status. The onus is on the user to verify that the workload was configured succesfully by RMD.
 
 ## Prerequisites
 * Node Feature Discovery ([NFD](https://github.com/kubernetes-sigs/node-feature-discovery)) should be deployed in the cluster before running the operator. Once NFD has applied labels to nodes with capabilities compatible with RMD, such as *Intel L3 Cache Allocation Technology*, the operator can deploy RMD on those nodes. 
@@ -16,6 +37,7 @@ Note: NFD is recommended, but not essential. Node labels can also be applied man
 | v0.1 | N/A |
 | v0.2 | v0.1 |
 | v0.3 | v0.2 |
+| v0.3 | v0.3 |
 
 ## Setup
 
@@ -77,7 +99,7 @@ Note: For the operator to deploy and run RMD instances, an up to date RMD docker
 
 ### Quickstart
 
-All above commands fror build, images, deploy can be done by:
+All above commands for build, images, deploy can be done by:
 
 `make all`
 
@@ -88,7 +110,7 @@ The RmdConfig custom resource is the object that governs the overall deployment 
 The RmdConfig spec consists of:
 -   `rmdImage`: This is the name/tag given to the RMD container image that will be deployed in a DaemonSet by the operator.
 -   `rmdNodeSelector`: This is a key/value map used for defining a list of node labels that a node must satisfy in order for RMD to be deployed on it. If no `rmdNodeSelector` is defined, the default value is set to the single feature label for RDT L3 CAT (`"feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"`).
--   `deployNodeAgent`: This is a boolean flag that tell the operator whether or not to deploy the node agent along with the RMD pod. The node agent is only necessary for requesting RDT features via the pod spec. This approach is experimental and as such, is disabled by default.
+-   `deployNodeAgent`: This is a boolean flag that tells the operator whether or not to deploy the node agent along with the RMD pod. The node agent is only necessary for requesting RDT features via the pod spec. This approach is experimental and as such, is disabled by default.
 
 The RmdConfig status represents the nodes which match the `rmdNodeSelector` and have RMD deployed.
 
@@ -109,12 +131,12 @@ spec:
 
 ### RmdWorkload
 The RmdWorkload custom resource is the object used to define a workload for RMD.
-RmdWorkload objects can be created **directly** via the RmdWorkload spec or **automatically** via the pod spec. 
+RmdWorkload objects can be created **directly** via the RmdWorkload spec.
 
-Direct configuration affords the user more control over specific cores and specific nodes on which they wish to configure a particular RmdWorkload. This section describes the direct configuration approach.
+**Direct configuration is the recommended approach** as it affords the user more control over specific cores and specific nodes on which they wish to configure a particular RmdWorkload. The Kubelet's CPU Manager can then allocate CPUs on pre-configured nodes to containers, as described in more detail [here](#recommended-approach-for-use-with-the-cpu-manager). This section describes how to create an RmdWorkload spec directly.
 
-Automatic configuration utilizes pod annotations and the `intel.com/l3_cache_ways` extended resource to create an RmdWorkload for the same CPUs that are allocated to the pod.
-The automatic configuration approach is described [later](https://github.com/intel/rmd-operator/-/tree/master#pod-requesting-cache-ways). This approach has a number of limitations and is less stable than direct configuration.
+It is also possible to create RmdWorkloads **automatically** via the pod spec. Automatic configuration utilizes pod annotations and the `intel.com/l3_cache_ways` extended resource to create an RmdWorkload for the same CPUs that are allocated to the pod.
+**Automatic configuration has a number of limitations and is less stable than direct configuration.** The automatic configuration approach is described [later](#experimental-approach-for-use-with-the-cpu-manager) in this document.
 
 
 #### Examples
@@ -198,7 +220,7 @@ spec:
 ````
 This workload requests cache from the guaranteed group for **all** CPUs on all nodes with feature label `feature.node.kubernetes.io/cpu-rdt.RDTL3CA=true`. See [intel/rmd](https://github.com/intel/rmd#cache-poolsgroups) for details on cache pools/groups.
 
-The `nodeSelector` label is useful for cluster partitioning. For example, a number of nodes can be grouped together by a common label and pre-provisioned with particular RDT features/settings via a single RMD workload. This node group can then be targeted by workloads that require such settings via existing K8s constructs such as [`nodeAffinity`](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/).
+The `nodeSelector` label is useful for cluster partitioning. For example, a number of nodes can be grouped together by a common label and pre-provisioned with particular RDT features/settings via a single RMD workload. This node group can then be targeted by workloads that require such settings via existing K8s constructs such as [`nodeAffinity`](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/). Please see [recommended approach for for use with the CPU Manager](#recommended-approach-for-use-with-the-cpu-manager) for a more detailed example.
 
 **Note**: If `nodeSelector` is specified and a `nodes` list is also specified, `nodeSelector` will take precedence and the specified `nodes` list will be redundant.
 
@@ -393,10 +415,98 @@ Status:
 ````
 This example displays the RmdNodeState for worker-node-1. It shows that this node currently has two RMD workloads configured successfully.
 
-## Pod Requesting Cache Ways
+## Recommended Approach for Use With the CPU Manager
+In order to have total confidence in how the CPU Manager will allocate CPUs to containers, it is necessary to pre-provision all *Allocatable* (i.e. *shared pool* - *reserved-cpus*) CPUs on a specific node (or group of nodes) with a common configuration. These nodes are then used for containers with CPU requirements that match the pre-provisioned configuration. 
+
+Should there be a need to [designate these nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#example-use-cases) exclusively to containers that require these pre-provisioned CPUs, these nodes can also be tainted. As a result, only suitable pods tolerating the taint will be scheduled to these nodes.
+
+The following is an example of how this is achieved. Please read all necessary documentation linked in the example before attempting this approach or similar.
+
+### Example
+#### Node Setup
+* Set the Kubelet flag `reserved-cpus` with a list of specific [CPUs to be reserved for system and Kubernetes daemons](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#explicitly-reserved-cpu-list):
+  
+  `--reserved-cpus=0-3`
+  
+  Reserved CPUs 0-3 are no longer **exclusively** allocatable by the CPU Manager. Simply put, a container requesting exclusive CPUs cannot be allocated CPUs 0-3.
+  
+  CPUs 0-3 do, however, remain in the CPU Manager's shared pool.
+  
+* Apply a label to this node representing the configuration you wish to apply (eg `node.guaranteed.cache.only=true`). Please read K8s documentation on [node labelling](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/).
+    
+  `kubectl label node <node-name> node.guaranteed.cache.only=true`
+    
+* **Optional**: Apply a taint to this node in order to only allow pods that tolerate the taint to be scheduled to this node. Please read K8s documentation on [node tainting](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/).
+    
+  `kubectl taint nodes <node-name> node.guaranteed.cache.only=true:NoSchedule`
+    
+* Repeat these steps for all nodes that are to be designated, ensuring the same `reserved-cpus` list is used for all nodes.
+
+#### Create RmdWorkload
+
+This workload is to be configured for all *Allocatable* CPUs on the desired node(s). This is done by setting `allCores` to true and specifying `reservedCoreIds` with the **same CPU list that has been reserved by the Kubelet** in the earlier step. 
+
+This workload will be configured on all nodes that have been labelled `node.guaranteed.cache.only=true` in the earlier step. This is achieved through the RmdWorkload spec field `nodeSelector`.
+
+**Note:** The list of `reservedCoreIds` is only taken into consideration when `allCores` is set to true. 
+
+See `samples/rmdworkload-guaranteed-cache-allocatable.yaml`
+````yaml
+apiVersion: intel.com/v1alpha1
+kind: RmdWorkload
+metadata:
+    name: rmdworkload-guaranteed-cache
+spec:
+    allCores: true
+    reservedCoreIds: ["0-3"]
+    rdt:
+        cache:
+            max: 2
+            min: 2
+    nodeSelector: 
+      node.guaranteed.cache.only: "true"
+      
+````
+#### Create Pod
+
+This pod is provided with a `nodeSelector` for the designated node label, and a `taintToleration` for the designated node taint. 
+
+This is a guaranteed pod requesting exclusive CPUs.
+
+Please read K8s documentation on [assigning pods to nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#:~:text=Run%20kubectl%20get%20nodes%20to,the%20node%20you've%20chosen).
+
+
+ ````
+ apiVersion corev1
+kind Pod
+metadata:
+  name: guaranteed-cache-pod
+spec:
+  nodeSelector:
+    node.guaranteed.cache.only: "true"
+  tolerations:
+  - key: "node.guaranteed.cache.only"
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+  containers:
+  - name: container1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: 3
+      limits:
+        memory: "64Mi"
+        cpu: 3
+````
+#### Result
+
+The pod will be scheduled to a designated `node.guaranteed.cache.only` node and the pod's container will be allocated 3 CPUs that have been pre-configured by the `rmdworkload-guaranteed-cache` RmdWorkload.
+ 
+## Experimental Approach for Use With the CPU Manager
 It is also possible for the operator to create an RmdWorkload **automatically** by interpreting resource requests and [annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) in the pod spec.
 
-### Warning: This approach is experimental and is not recommended in production. 
+### Warning: This approach is experimental and is not recommended in production. Intimate knowledge of the workings of the CPU Manager and existing cache resources are required. 
 
 Under this approach, the user creates a pod with a container requesting **exclusive** CPUs from the Kubelet CPU Manager and available cache ways. The pod must also contain RMD specific pod annotations to describe the desired RmdWorkload.
 It is then the responsiblity of the operator and the node agent to do the following:
@@ -739,11 +849,3 @@ CPU allocation for containers is the responsibility of the CPU Manager in Kubele
 Should the post to RMD fail at this point, the reason for failure will be reflected in the RmdWorkload status. 
 
 **Note:** It is important that the user always checks the RmdWorkload status after pod creation to validate that the workload has been configured correctly.
-
-## Workflows
-### Direct Configuration
-
-TODO: Add new diagram
-
-### Automatic Configuration
-TODO: Add new diagram
