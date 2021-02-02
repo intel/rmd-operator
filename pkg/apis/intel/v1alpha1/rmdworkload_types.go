@@ -53,13 +53,14 @@ type RmdWorkloadSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	AllCores     bool              `json:"allCores"`
-	CoreIds      []string          `json:"coreIds"`
-	Policy       string            `json:"policy,omniempty"`
-	Rdt          Rdt               `json:"rdt"`
-	Plugins      Plugins           `json:"plugins,omniempty"`
-	NodeSelector map[string]string `json:"nodeSelector"`
-	Nodes        []string          `json:"nodes"`
+	AllCores        bool              `json:"allCores"`
+	CoreIds         []string          `json:"coreIds"`
+	ReservedCoreIds []string          `json:"reservedCoreIds"`
+	Policy          string            `json:"policy,omniempty"`
+	Rdt             Rdt               `json:"rdt"`
+	Plugins         Plugins           `json:"plugins,omniempty"`
+	NodeSelector    map[string]string `json:"nodeSelector"`
+	Nodes           []string          `json:"nodes"`
 }
 
 // RmdWorkloadStatus defines the observed state of RmdWorkload

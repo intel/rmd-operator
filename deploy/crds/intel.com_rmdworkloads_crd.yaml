@@ -90,6 +90,10 @@ spec:
                   type: object
               required:
               type: object
+            reservedCoreIds:
+              items:
+                type: string
+              type: array
           required:
           type: object
         status:

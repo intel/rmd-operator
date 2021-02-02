@@ -1,0 +1,15 @@
+apiVersion: intel.com/v1alpha1
+kind: RmdWorkload
+metadata:
+  name: rmdworkload-guaranteed
+spec:
+  # Add fields here
+  allCores: true
+  reservedCoreIds: ["0-3"]
+  rdt:
+    cache:
+      max: 2
+      min: 2
+  nodeSelector:
+    # this is an example label as shown in README      
+    node.guaranteed.cache.only: "true"      
