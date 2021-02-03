@@ -21,9 +21,9 @@ Table of Contents
       * [Experimental Approach for Use With the CPU Manager](#experimental-approach-for-use-with-the-cpu-manager)
 
 ## Notice: Changes Introduced for RMD Operator v0.3
-* RmdConfig CRD: This object is introduced in **v0.3**. See explanation [below](https://github.com/intel/rmd-operator/-/blob/master/README.md#L90).
+* RmdConfig CRD: This object is introduced in **v0.3**. See explanation [below](#rmdconfig).
 * RmdWorkload CRD: Additional spec fields `nodeSelector` see [example](#cache-nodeselector), `allCores` see [example](#cache-all-cores), `reservedCoreIds` see [example](#create-rmdworkload-1).
-* RMD Node Agent is not deployed by default. See explanation [below](https://github.com/intel/rmd-operator/-/blob/master/README.md#L96).
+* RMD Node Agent is not deployed by default. See explanation [below](#rmdconfig).
 * Pods requesting RDT features are no longer deleted by the operator. In **v0.2** and earlier, should a workload fail to post to RMD after being requested via a pod spec, the pod would be deleted and the RmdWorkload object was garbage collected as a result. This is no longer the case in **v0.3**. Instead, the pod is not deleted, but the reason for failure is displayed in the pod's child RmdWorkload status. The onus is on the user to verify that the workload was configured succesfully by RMD.
 
 ## Prerequisites
@@ -415,7 +415,7 @@ Status:
 ````
 This example displays the RmdNodeState for worker-node-1. It shows that this node currently has two RMD workloads configured successfully.
 
-## Recommended Approach for Use With the CPU Manager
+## Recommended Approach for Use With the [CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
 In order to have total confidence in how the CPU Manager will allocate CPUs to containers, it is necessary to pre-provision all *Allocatable* (i.e. *shared pool* - *reserved-cpus*) CPUs on a specific node (or group of nodes) with a common configuration. These nodes are then used for containers with CPU requirements that match the pre-provisioned configuration. 
 
 Should there be a need to [designate these nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#example-use-cases) exclusively to containers that require these pre-provisioned CPUs, these nodes can also be tainted. As a result, only suitable pods tolerating the taint will be scheduled to these nodes.
@@ -503,7 +503,7 @@ spec:
 
 The pod will be scheduled to a designated `node.guaranteed.cache.only` node and the pod's container will be allocated 3 CPUs that have been pre-configured by the `rmdworkload-guaranteed-cache` RmdWorkload.
  
-## Experimental Approach for Use With the CPU Manager
+## Experimental Approach for Use With the [CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
 It is also possible for the operator to create an RmdWorkload **automatically** by interpreting resource requests and [annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) in the pod spec.
 
 ### Warning: This approach is experimental and is not recommended in production. Intimate knowledge of the workings of the CPU Manager and existing cache resources are required. 
