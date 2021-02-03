@@ -153,6 +153,40 @@ func TestFormatWorkload(t *testing.T) {
 
 			expectedWorkload: expectedRDTWorkloads[6],
 		},
+		{
+			name:       "test case 7",
+			workloadCR: rmdWorkloads[7],
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-23,48-71",
+					},
+					1: {
+						ShareCPUList: "24-47,72-95",
+					},
+				},
+			},
+
+			expectedWorkload: expectedRDTWorkloads[7],
+		},
+		{
+			name:       "test case ",
+			workloadCR: rmdWorkloads[8],
+			response: rmdCache.Infos{
+				Num: 0,
+				Caches: map[uint32]rmdCache.Info{
+					0: {
+						ShareCPUList: "0-23,48-71",
+					},
+					1: {
+						ShareCPUList: "24-47,72-95",
+					},
+				},
+			},
+
+			expectedWorkload: expectedRDTWorkloads[8],
+		},
 	}
 
 	for _, tc := range tcases {

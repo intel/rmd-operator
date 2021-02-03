@@ -268,6 +268,13 @@ func (rc *OperatorRmdClient) formatWorkload(workloadCR *intelv1alpha1.RmdWorkloa
 		if err != nil {
 			return &rmdtypes.RDTWorkLoad{}, err
 		}
+
+		if len(workloadCR.Spec.ReservedCoreIds) != 0 {
+			rsvdCPUSet := cpuset.MustParse(strings.Join(workloadCR.Spec.ReservedCoreIds, ","))
+			allCoresCPUSet := cpuset.MustParse(allCores)
+			finalCPUSet := allCoresCPUSet.Difference(rsvdCPUSet)
+			allCores = finalCPUSet.String()
+		}
 		coreIDs := []string{allCores}
 		rdtWorkload.CoreIDs = coreIDs
 	} else {

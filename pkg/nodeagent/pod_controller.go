@@ -261,6 +261,7 @@ func buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWorkload, error) {
 		rmdWorkload.Spec.Nodes = make([]string, 0)
 		rmdWorkload.Spec.Nodes = append(rmdWorkload.Spec.Nodes, pod.Spec.NodeName)
 		rmdWorkload.Spec.NodeSelector = make(map[string]string, 0)
+		rmdWorkload.Spec.ReservedCoreIds = make([]string, 0)
 
 		getAnnotationInfo(rmdWorkload, pod, container.Name) //Changes workload in getAnnotationInfo()
 

@@ -375,6 +375,11 @@ func (in *RmdWorkloadSpec) DeepCopyInto(out *RmdWorkloadSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ReservedCoreIds != nil {
+		in, out := &in.ReservedCoreIds, &out.ReservedCoreIds
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	out.Rdt = in.Rdt
 	out.Plugins = in.Plugins
 	if in.NodeSelector != nil {
