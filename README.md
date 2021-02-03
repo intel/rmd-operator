@@ -849,3 +849,19 @@ CPU allocation for containers is the responsibility of the CPU Manager in Kubele
 Should the post to RMD fail at this point, the reason for failure will be reflected in the RmdWorkload status. 
 
 **Note:** It is important that the user always checks the RmdWorkload status after pod creation to validate that the workload has been configured correctly.
+
+## Cleanup
+
+To remove the RMD operator, related objects and workloads configured to RMD instances, complete the following steps.
+
+### Delete RmdWorkloads
+
+Delete RmdWorkload objects to allow the operator to perform workload removal from RMD instances:
+
+`kubectl delete rmdworkloads --all`
+
+**Note:** If an RmdWorkload has been created [automatically via the pod spec](#experimental-approach-for-use-with-the-cpu-manager), this RmdWorkload is a child of its corresponding pod. As a result, simply deleting this RmdWorkload will only result in the node agent reconciling the parent pod and the RmdWorkload will be recreated instantly. For this reason, pods that are parents of RmdWorkloads need to be deleted instead. This will result in the RmdWorkload being garbage collected by the operator and the workload will be removed from the relative RMD instance(s).
+
+### Delete All Remaining Objects
+
+`make remove`
