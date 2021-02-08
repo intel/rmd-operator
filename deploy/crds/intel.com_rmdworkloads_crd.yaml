@@ -59,9 +59,7 @@ spec:
                       type: string
                     ratio:
                       type: string
-                  required:
                   type: object
-              required:
               type: object
             policy:
               type: string
@@ -75,9 +73,6 @@ spec:
                       type: integer
                     min:
                       type: integer
-                  required:
-                  - max
-                  - min
                   type: object
                 mba:
                   description: Mba defines mba parameters for workload
@@ -86,15 +81,12 @@ spec:
                       type: integer
                     percentage:
                       type: integer
-                  required:
                   type: object
-              required:
               type: object
             reservedCoreIds:
               items:
                 type: string
               type: array
-          required:
           type: object
         status:
           description: RmdWorkloadStatus defines the observed state of RmdWorkload
@@ -123,9 +115,7 @@ spec:
                             type: string
                           ratio:
                             type: string
-                        required:
                         type: object
-                    required:
                     type: object
                   policy:
                     type: string
@@ -139,7 +129,6 @@ spec:
                             type: integer
                           min:
                             type: integer
-                        required:
                         type: object
                       mba:
                         description: Mba defines mba parameters for workload
@@ -148,22 +137,18 @@ spec:
                             type: integer
                           percentage:
                             type: integer
-                        required:
                         type: object
-                    required:
                     type: object
                   response:
                     type: string
                   status:
                     type: string
-                required:
                 type: object
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                 of cluster Important: Run "operator-sdk generate k8s" to regenerate
                 code after modifying this file Add custom validation using kubebuilder
                 tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               type: object
-          required:
           type: object
       type: object
   version: v1alpha1

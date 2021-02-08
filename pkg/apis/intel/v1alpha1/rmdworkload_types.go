@@ -9,43 +9,43 @@ import (
 
 // Rdt related settings (Cache, MBA)
 type Rdt struct {
-	Cache Cache `json:"cache"`
-	Mba   Mba   `json:"mba"`
+	Cache Cache `json:"cache,omitempty"`
+	Mba   Mba   `json:"mba,omitempty"`
 }
 
 // Cache defines cache parameters for workload
 type Cache struct {
-	Max int `json:"max"`
-	Min int `json:"min"`
+	Max int `json:"max,omitempty"`
+	Min int `json:"min,omitempty"`
 }
 
 // Mba defines mba parameters for workload
 type Mba struct {
-	Percentage int `json:"percentage"`
-	Mbps       int `json:"mbps"`
+	Percentage int `json:"percentage,omitempty"`
+	Mbps       int `json:"mbps,omitempty"`
 }
 
 // Plugins contains individual RMD plugin types
 type Plugins struct {
-	Pstate Pstate `json:"pstate"`
+	Pstate Pstate `json:"pstate,omitempty"`
 }
 
 // Pstate defines pstate parametes for workload
 type Pstate struct {
-	Ratio      string `json:"ratio,omniempty"`
-	Monitoring string `json:"monitoring,omniempty"`
+	Ratio      string `json:"ratio,omitempty"`
+	Monitoring string `json:"monitoring,omitempty"`
 }
 
 // WorkloadState defines state of a workload for a single node
 type WorkloadState struct {
-	Response string   `json:"response"`
-	ID       string   `json:"id"`
-	CosName  string   `json:"cosName"`
-	Status   string   `json:"status"`
-	CoreIds  []string `json:"coreIds"`
-	Policy   string   `json:"policy,omniempty"`
-	Rdt      Rdt      `json:"rdt"`
-	Plugins  Plugins  `json:"plugins,omniempty"`
+	Response string   `json:"response,omitempty"`
+	ID       string   `json:"id,omitempty"`
+	CosName  string   `json:"cosName,omitempty"`
+	Status   string   `json:"status,omitempty"`
+	CoreIds  []string `json:"coreIds,omitempty"`
+	Policy   string   `json:"policy,omitempty"`
+	Rdt      Rdt      `json:"rdt,omitempty"`
+	Plugins  Plugins  `json:"plugins,omitempty"`
 }
 
 // RmdWorkloadSpec defines the desired state of RmdWorkload
@@ -53,14 +53,14 @@ type RmdWorkloadSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	AllCores        bool              `json:"allCores"`
-	CoreIds         []string          `json:"coreIds"`
-	ReservedCoreIds []string          `json:"reservedCoreIds"`
-	Policy          string            `json:"policy,omniempty"`
-	Rdt             Rdt               `json:"rdt"`
-	Plugins         Plugins           `json:"plugins,omniempty"`
-	NodeSelector    map[string]string `json:"nodeSelector"`
-	Nodes           []string          `json:"nodes"`
+	AllCores        bool              `json:"allCores,omitempty"`
+	CoreIds         []string          `json:"coreIds,omitempty"`
+	ReservedCoreIds []string          `json:"reservedCoreIds,omitempty"`
+	Policy          string            `json:"policy,omitempty,omitempty"`
+	Rdt             Rdt               `json:"rdt,omitempty"`
+	Plugins         Plugins           `json:"plugins,omitempty"`
+	NodeSelector    map[string]string `json:"nodeSelector,omitempty"`
+	Nodes           []string          `json:"nodes,omitempty"`
 }
 
 // RmdWorkloadStatus defines the observed state of RmdWorkload
@@ -68,7 +68,7 @@ type RmdWorkloadStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	WorkloadStates map[string]WorkloadState `json:"workloadStates"`
+	WorkloadStates map[string]WorkloadState `json:"workloadStates,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
