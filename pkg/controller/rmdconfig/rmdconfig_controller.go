@@ -5,17 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
-	"strconv"
 	"time"
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
 	rmd "github.com/intel/rmd-operator/pkg/rmd"
 	"github.com/intel/rmd-operator/pkg/state"
-	"github.com/intel/rmd-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -37,7 +34,6 @@ const (
 	rmdNodeStateNameConst = "rmd-node-state-"
 	rmdConst              = "rmd"
 	nodeAgentNameConst    = "rmd-node-agent"
-	l3Cache               = "intel.com/l3_cache_ways"
 )
 
 var rmdDaemonSetPath = "/rmd-manifests/rmd-ds.yaml"
@@ -176,19 +172,6 @@ func (r *ReconcileRmdConfig) Reconcile(request reconcile.Request) (reconcile.Res
 			reqLogger.Info("Failed to create node state for node", "node name", node.GetObjectMeta().GetName())
 			return reconcile.Result{}, err
 		}
-		if rmdConfig.Spec.DeployNodeAgent {
-			// Discover L3 cache ways on Node
-			err = r.updateNodeStatusCapacity(&node)
-			if err != nil {
-				reqLogger.Info("Failed to update cache ways for node", "node name", node.GetObjectMeta().GetName())
-				return reconcile.Result{}, err
-			}
-		} else {
-			err = r.setZeroCapacity(&node)
-			if err != nil {
-				reqLogger.Info("Failed to update cache ways for node", "node name", node.GetObjectMeta().GetName())
-			}
-		}
 		// Add new node state data to RmdNodeData object
 		r.rmdNodeData.UpdateRmdNodeData(node.Name)
 	}
@@ -231,79 +214,6 @@ func (r *ReconcileRmdConfig) createNodeStateIfNotPresent(nodeName string, rmdCon
 			}
 			logger.Info("RmdNodeState created for node", "node name", nodeName)
 		}
-	}
-
-	return nil
-}
-
-func (r *ReconcileRmdConfig) updateNodeStatusCapacity(rmdNode *corev1.Node) error {
-	logger := log.WithName("updateNodeStatusCapacity")
-
-	pods := &corev1.PodList{}
-	err := r.client.List(context.TODO(), pods, client.MatchingLabels(client.MatchingLabels{"name": "rmd-pod"}))
-	if err != nil {
-		logger.Info("Failed to list Pods")
-		return err
-	}
-
-	rmdPod, err := util.GetPodFromNodeName(pods, rmdNode.GetObjectMeta().GetName())
-	if err != nil {
-		rmdPod, err = util.GetPodFromNodeAddresses(pods, rmdNode)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Query RMD for available cache ways, update node extended resources accordingly.
-	err = errors.NewServiceUnavailable("rmdPod unavailable, requeuing")
-	if len(rmdPod.Spec.Containers) == 0 {
-		return err
-	}
-	if len(rmdPod.Spec.Containers[0].Ports) == 0 {
-		return err
-	}
-
-	addressPrefix := r.rmdClient.GetAddressPrefix()
-	address := fmt.Sprintf("%s%s%s%d", addressPrefix, rmdPod.Status.PodIP, ":", rmdPod.Spec.Containers[0].Ports[0].ContainerPort)
-
-	availableCacheWays, err := r.rmdClient.GetAvailableCacheWays(address)
-	if err != nil {
-		// Cannot access l3 cache extended resources so set to zero.
-		err = r.setZeroCapacity(rmdNode)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	// If l3_cache_ways extended resource does not exist on the node or is zero,
-	// update the node status capacity.
-	if _, ok := rmdNode.Status.Capacity[corev1.ResourceName(l3Cache)]; !ok || rmdNode.Status.Capacity[corev1.ResourceName(l3Cache)] == resource.MustParse("0") {
-		rmdNode.Status.Capacity[corev1.ResourceName(l3Cache)] = resource.MustParse(strconv.Itoa(int(availableCacheWays)))
-		err = r.client.Status().Update(context.TODO(), rmdNode)
-		if err != nil {
-			logger.Error(err, "failed to update the node with extended resource")
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (r *ReconcileRmdConfig) setZeroCapacity(rmdNode *corev1.Node) error {
-	logger := log.WithName("setZeroCapacity")
-	for extendedResource := range rmdNode.Status.Capacity {
-		if extendedResource.String() == l3Cache {
-			if rmdNode.Status.Capacity[extendedResource] != resource.MustParse("0") {
-				rmdNode.Status.Capacity[extendedResource] = resource.MustParse("0")
-				break
-			}
-			return nil
-		}
-	}
-	err := r.client.Status().Update(context.TODO(), rmdNode)
-	if err != nil {
-		logger.Error(err, "failed to update the node with extended resource")
-		return err
 	}
 
 	return nil

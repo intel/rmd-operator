@@ -5,13 +5,18 @@ go 1.13
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/gojp/goreportcard v0.0.0-20200415071653-59167b516f3f // indirect
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/intel/rmd v0.0.0-20200911162347-989db48d641c
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/spf13/pflag v1.0.5
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
+	google.golang.org/grpc v1.27.1
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kubelet v0.0.0
 	k8s.io/kubernetes v1.16.2
 	sigs.k8s.io/controller-runtime v0.4.0
 	sigs.k8s.io/yaml v1.1.0
@@ -36,7 +41,7 @@ replace (
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
 	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
-	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/kubelet => k8s.io/kubelet v0.20.2
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
