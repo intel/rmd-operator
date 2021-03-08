@@ -17,14 +17,15 @@ Table of Contents
          * [RmdConfig](#rmdconfig)
          * [RmdWorkload](#rmdworkload)
          * [RmdNodeState](#rmdnodestate)
-      * [Recommended Approach for Use With the CPU Manager](#recommended-approach-for-use-with-the-cpu-manager)
-      * [Experimental Approach for Use With the CPU Manager](#experimental-approach-for-use-with-the-cpu-manager)
+      * [Static Configuration Aligned With the CPU Manager](#static-configuration-aligned-with-the-cpu-manager)
+      * [Dynamic Configuration With the CPU Manager (Experimental)](#dynamic-configuration-with-the-cpu-manager-experimental)
 
 ## Notice: Changes Introduced for RMD Operator v0.3
 * RmdConfig CRD: This object is introduced in **v0.3**. See explanation [below](#rmdconfig).
 * RmdWorkload CRD: Additional spec fields `nodeSelector` see [example](#cache-nodeselector), `allCores` see [example](#cache-all-cores), `reservedCoreIds` see [example](#create-rmdworkload-1).
 * RMD Node Agent is not deployed by default. See explanation [below](#rmdconfig).
 * Pods requesting RDT features are no longer deleted by the operator. In **v0.2** and earlier, should a workload fail to post to RMD after being requested via a pod spec, the pod would be deleted and the RmdWorkload object was garbage collected as a result. This is no longer the case in **v0.3**. Instead, the pod is not deleted, but the reason for failure is displayed in the pod's child RmdWorkload status. The onus is on the user to verify that the workload was configured succesfully by RMD.
+* Extended resources `intel.com/l3_cache_ways` represent the number of cache ways available in the [RMD guaranteed pool](https://github.com/intel/rmd#cache-poolsgroups). Cache ways are represented as devices and as such, a lightweight device plugin is deployed along with RMD for their discovery and advertisement. If running behind a proxy server, proxy settings must be configured in the plugin's [Dockerfile](https://github.com/intel/rmd-operator/blob/master/build/deviceplugin.Dockerfile#L3).
 
 ## Prerequisites
 * Node Feature Discovery ([NFD](https://github.com/kubernetes-sigs/node-feature-discovery)) should be deployed in the cluster before running the operator. Once NFD has applied labels to nodes with capabilities compatible with RMD, such as *Intel L3 Cache Allocation Technology*, the operator can deploy RMD on those nodes. 
@@ -415,7 +416,9 @@ Status:
 ````
 This example displays the RmdNodeState for worker-node-1. It shows that this node currently has two RMD workloads configured successfully.
 
-## Recommended Approach for Use With the [CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
+## Static Configuration Aligned With the [CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
+This approach is reliable, but has drawbacks such as potentially under utilised resources. As such, it may be more suited to nodes with lesser CPU resources (eg VMs). 
+
 In order to have total confidence in how the CPU Manager will allocate CPUs to containers, it is necessary to pre-provision all *Allocatable* (i.e. *shared pool* - *reserved-cpus*) CPUs on a specific node (or group of nodes) with a common configuration. These nodes are then used for containers with CPU requirements that match the pre-provisioned configuration. 
 
 Should there be a need to [designate these nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/#example-use-cases) exclusively to containers that require these pre-provisioned CPUs, these nodes can also be tainted. As a result, only suitable pods tolerating the taint will be scheduled to these nodes.
@@ -503,22 +506,26 @@ spec:
 
 The pod will be scheduled to a designated `node.guaranteed.cache.only` node and the pod's container will be allocated 3 CPUs that have been pre-configured by the `rmdworkload-guaranteed-cache` RmdWorkload.
  
-## Experimental Approach for Use With the [CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
+## Dynamic Configuration With the [CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/) (Experimental)
 It is also possible for the operator to create an RmdWorkload **automatically** by interpreting resource requests and [annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) in the pod spec.
 
 ### Warning: This approach is experimental and is not recommended in production. Intimate knowledge of the workings of the CPU Manager and existing cache resources are required. 
 
-Under this approach, the user creates a pod with a container requesting **exclusive** CPUs from the Kubelet CPU Manager and available cache ways. The pod must also contain RMD specific pod annotations to describe the desired RmdWorkload.
+Under this approach, the user creates a pod with a container requesting **exclusive** CPUs from the Kubelet CPU Manager and available cache ways from the guaranteed pool. If additional capabilities such as MBA are desired, the pod must also contain RMD specific pod annotations to describe the desired RmdWorkload.
 It is then the responsiblity of the operator and the node agent to do the following:
 *  Extract the RMD related data passed to the pod spec by the user.
 *  Discover which CPUs have been allocated to the container by the CPU Manager.
 *  Create the RmdWorkload object based on this information.
 
-The following criteria must be met in order for the operator to succesfully create an RmdWorkload for a container based on the pod spec.
+The following criteria must be met in order for the operator to succesfully create an RmdWorkload with guaranteed cache for a container based on the pod spec.
 *  The RmdConfig `deployNodeAgent` field must be set to `true` and updated via `kubectl apply -f deploy/rmdconfig.yaml`.
+*  [RMD cache pools] (https://github.com/intel/rmd#cache-poolsgroups) configured correctly (out of scope for this project).
 *  The container must request extended resource `intel.com/l3_cache_ways`. 
 *  The container must also [request exclusive CPUs from CPU Manager](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy).
-*  Pod annotations pertaining to the container requesting cache ways must be prefixed with that container's name. See example and [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
+*  The Kubelet's [Topology Manager](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager) should be configured with the `single-numa-node` [policy](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/#topology-manager-policies) on the node which RMD is deployed. The reason for this is to reduce the possibility of a workload failing after container creation. This might happen if cache ways are not available from the same NUMA node as the allocated CPUs. Cache ways are advertised as devices with an associated NUMA node. This enables the Topology Manager to align cache ways and CPUs, helping to mitigate the risk of RMD workload failure. However, this eventuality is still possible and will result in a `Topology Affinity Error` should more cache ways be requested than can be satisfied on a single NUMA node.
+
+The following *additional* criteria must be met in order for the operator to succesfully create an RmdWorkload with with guaranteed cache *and* additional features such as MBA for a container based on the pod spec.
+*  Pod annotations pertaining to the container requesting RMD features must be prefixed with that container's name. See example and [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
 
 ### Example: Single Container
 See `samples/pod-guaranteed-cache.yaml`
@@ -528,8 +535,6 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: pod-guaranteed-cache
-  annotations:
-    container1_cache_min: "2"
 spec:
   containers:
   - name: container1
@@ -547,8 +552,7 @@ spec:
         cpu: 3
         intel.com/l3_cache_ways: 2
 ````
-This pod spec has one container requesting 3 exclusive CPUs and 2 cache ways. The number of cache ways requested is also interpreted as the value for `max cache` for the RmdWorkload.
-The `min cache` value is specified in the pod annotations. The naming convention for RMD workload related annotations **must** follow the [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
+This pod spec has one container requesting 3 exclusive CPUs and 2 cache ways. The number of cache ways requested is also interpreted as the value for `max cache` **and** `min cache` for the RmdWorkload. This means the container will be allocated 2 cache ways from [RMD's guaranteed pool](https://github.com/intel/rmd#cache-poolsgroups).
 
 This pod will trigger the operator to automatically create an RmdWorkload for `container1` called `pod-guaranteed-cache-rmdworkload-container1`
 
@@ -574,16 +578,11 @@ Spec:
     worker-node-1
   Plugins:
     Pstate:
-      Monitoring:
-      Ratio:
-  Policy:
   Rdt:
     Cache:
       Max:  2
       Min:  2
     Mba:
-      Mbps: 0
-      Percentage:  0
 Status:
   Workload States:
     worker-node-1:
@@ -595,16 +594,11 @@ Status:
       Id:        22
       Plugins:
         Pstate:
-          Monitoring:
-          Ratio:
-      Policy:
       Rdt:
         Cache:
           Max:  2
           Min:  2
         Mba:
-          Mbps: 0
-          Percentage:  0
       Response:  Success: 200
       Status:    Successful
 `````
@@ -630,16 +624,11 @@ Spec:
     worker-node-1
   Plugins:
     Pstate:
-      Monitoring:
-      Ratio:
-  Policy:
   Rdt:
     Cache:
       Max:  2
       Min:  2
     Mba:
-      Mbps: 0
-      Percentage:  0
 Status:
   Workload States:
     worker-node-1:
@@ -648,16 +637,9 @@ Status:
       Id:        
        Plugins:
         Pstate:
-          Monitoring:
-          Ratio:
-      Policy:
       Rdt:
         Cache:
-          Max:  0
-          Min:  0
         Mba:
-          Mbps:        0
-          Percentage:  0
       Response:  Fail: Failed to validate workload. Reason: Workload validation in database failed. Details: CPU list [1] has been assigned
       Status:    
 `````
@@ -673,8 +655,6 @@ kind: Pod
 metadata:
   name: pod-multi-guaranteed-cache-mba
   annotations:
-    container1_cache_min: "2"
-    container2_cache_min: "2"
     container2_mba_percentage: "50"
 spec:
   containers:
@@ -707,9 +687,8 @@ spec:
         cpu: 2
         intel.com/l3_cache_ways: 2
 ````
-This pod spec has two container requesting 2 exclusive CPUs and 2 cache ways. The number of cache ways requested is also interpreted as the value for `max cache` for the RmdWorkload.
-The `min cache` values are specified for each container by prefixing the container name to the pod annotations.
-The `mba_percentage` value is also specified for `container2` in the pod annotations.
+This pod spec has two container requesting 2 exclusive CPUs and 2 cache ways. The number of cache ways requested is interpreted as the value for `max cache` **and** `min cache` for the RmdWorkload. This means the container will be allocated 2 cache ways from [RMD's guaranteed pool](https://github.com/intel/rmd#cache-poolsgroups).
+The `mba_percentage` value is specified for `container2` in the pod annotations.
 The naming convention for RMD workload related annotations **must** follow the [table](https://github.com/nolancon/rmd-operator/blob/v0.2/README.md#pod-annotaions-naming-convention) below.
 
 This pod will trigger the operator to automatically create **two** RmdWorkloads. One for `container1` called `pod-multi-guaranteed-cache-mba-rmdworkload-container1` and one for `container2` called `pod-multi-guaranteed-cache-mba-rmdworkload-container2` 
@@ -735,16 +714,11 @@ Spec:
     worker-node-1
   Plugins:
     Pstate:
-      Monitoring:
-      Ratio:
-  Policy:
   Rdt:
     Cache:
       Max:  2
       Min:  2
     Mba:
-      Mbps: 0
-      Percentage:  0
 Status:
   Workload States:
     worker-node-1:
@@ -753,18 +727,13 @@ Status:
         49
       Cos Name:  1_49-guarantee
       Id:        23
-            Plugins:
+      Plugins:
         Pstate:
-          Monitoring:
-          Ratio:
-      Policy:
       Rdt:
         Cache:
           Max:  2
           Min:  2
         Mba:
-          Mbps: 0
-          Percentage:  0
       Response:  Success: 200
       Status:    Successful
 
@@ -786,15 +755,11 @@ Spec:
     worker-node-1
   Plugins:
     Pstate:
-      Monitoring:
-      Ratio:
-  Policy:
   Rdt:
     Cache:
       Max:  2
       Min:  2
     Mba:
-      Mbps: 0 
       Percentage:  50
 Status:
   Workload States:
@@ -806,15 +771,11 @@ Status:
       Id:        24
       Plugins:
         Pstate:
-          Monitoring:
-          Ratio:
-      Policy:
       Rdt:
         Cache:
           Max:  2
           Min:  2
         Mba:
-          Mbps: 0
           Percentage:  50
       Response:  Success: 200
       Status:    Successful
@@ -825,7 +786,6 @@ This output displays the RmdWorkload created succesfully for `container2` based 
 **Note**: Annotations **must** be prefixed with the relevant container name as shown below.
 |  Specification | Container Name | Required Annotaion Name |
 | ------ | ------ | ------ |
-| Cache Minimum | container1 | container1_cache_min |
 | Policy | container1 | container1_policy |
 | P-State Ratio | container2 | container2_pstate_ratio |
 | P-State Monitoring | test-container | test-container_pstate_monitoring |

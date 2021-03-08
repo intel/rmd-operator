@@ -3,8 +3,6 @@ kind: Pod
 metadata:
   generateName: pod-multi-guaranteed-cache-mba-
   annotations:
-    container1_cache_min: "2"
-    container2_cache_min: "2"    
     container2_mba_percentage: "50"
 spec:
   containers:
