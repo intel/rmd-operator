@@ -1,11 +1,5 @@
 package state
 
-import (
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-)
-
-var log = logf.Log.WithName("state")
-
 type RmdNodeData struct {
 	RmdNodeList []string
 }
@@ -35,5 +29,4 @@ func (nd *RmdNodeData) DeleteRmdNodeData(nodeName string) {
 			nd.RmdNodeList = append(nd.RmdNodeList[:index], nd.RmdNodeList[index+1:]...)
 		}
 	}
-
 }

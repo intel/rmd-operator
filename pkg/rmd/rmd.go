@@ -30,7 +30,6 @@ const (
 	post            = "POST"
 	patch           = "PATCH"
 	deleteConst     = "DELETE"
-	vendor          = "intel.com/"
 	httpPrefix      = "http://"
 	httpsPrefix     = "https://"
 	tlsServerName   = "rmd-nameserver"
@@ -229,6 +228,7 @@ func (rc *OperatorRmdClient) GetAvailableCacheWays(address string) (int64, error
 	if err != nil {
 		return 0, err
 	}
+	defer resp.Body.Close()
 
 	receivedJSON, err := ioutil.ReadAll(resp.Body) //This reads raw request body
 	if err != nil {
@@ -261,7 +261,7 @@ func (rc *OperatorRmdClient) getAllCPUs(address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	defer resp.Body.Close()
 	receivedJSON, err := ioutil.ReadAll(resp.Body) //This reads raw request body
 	if err != nil {
 		return "", err
@@ -399,7 +399,10 @@ func (rc *OperatorRmdClient) PostWorkload(workloadCR *intelv1alpha1.RmdWorkload,
 	}
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return "Failed to read response to buffer", err
+	}
 	respStr := buf.String()
 
 	if resp.StatusCode != postResponse && resp.StatusCode != patchedResponse {
@@ -438,12 +441,14 @@ func (rc *OperatorRmdClient) PatchWorkload(workloadCR *intelv1alpha1.RmdWorkload
 		return "Failed to set header for http patch request", err
 	}
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return "Failed to read response to buffer", err
+	}
 	respStr := buf.String()
 	if resp.StatusCode != patchedResponse {
 		errStr := fmt.Sprintf("%s%v", "Fail: ", respStr)
 		return errStr, patchFailedErr
-
 	}
 	defer resp.Body.Close()
 
@@ -458,7 +463,6 @@ func (rc *OperatorRmdClient) DeleteWorkload(address string, workloadID string) e
 	req, err := http.NewRequest(deleteConst, httpString, nil)
 	if err != nil {
 		return err
-
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := rc.client.Do(req)
@@ -466,7 +470,10 @@ func (rc *OperatorRmdClient) DeleteWorkload(address string, workloadID string) e
 		return err
 	}
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return err
+	}
 
 	if resp.StatusCode != patchedResponse {
 		return deleteFailedErr

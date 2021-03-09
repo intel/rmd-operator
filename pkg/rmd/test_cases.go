@@ -6,12 +6,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type rmdWorkloadTestCase struct {
-	name             string
-	workload         *intelv1alpha1.RmdWorkload
-	expectedWorkload rmdtypes.RDTWorkLoad
-}
-
 func rdtWorkLoadTestCases() []*rmdtypes.RDTWorkLoad {
 	wlds := make([]*rmdtypes.RDTWorkLoad, 0)
 

@@ -259,8 +259,7 @@ func (r *ReconcilePod) buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWo
 		rmdWorkload.Spec.CoreIds = containerInfo.coreIDs
 		rmdWorkload.Spec.Nodes = make([]string, 0)
 		rmdWorkload.Spec.Nodes = append(rmdWorkload.Spec.Nodes, pod.Spec.NodeName)
-		rmdWorkload.Spec.NodeSelector = make(map[string]string, 0)
-		rmdWorkload.Spec.ReservedCoreIds = make([]string, 0)
+		rmdWorkload.Spec.NodeSelector = make(map[string]string)
 
 		getAnnotationInfo(rmdWorkload, pod, container.Name) //Changes workload in getAnnotationInfo()
 
@@ -367,8 +366,5 @@ func exclusiveCPUs(pod *corev1.Pod, container *corev1.Container) bool {
 		return false
 	}
 	cpuQuantity := container.Resources.Requests[corev1.ResourceCPU]
-	if cpuQuantity.Value()*1000 != cpuQuantity.MilliValue() {
-		return false
-	}
-	return true
+	return cpuQuantity.Value()*1000 == cpuQuantity.MilliValue()
 }

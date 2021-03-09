@@ -49,7 +49,6 @@ func createReconcileRmdConfigObject(rmdConfig *intelv1alpha1.RmdConfig) (*Reconc
 	r := &ReconcileRmdConfig{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
 
 	return r, nil
-
 }
 
 func TestRmdConfigControllerReconcile(t *testing.T) {
@@ -973,7 +972,6 @@ func TestCreateDSIfNotPresent(t *testing.T) {
 		if tc.dsCreated != dsCreated {
 			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.dsCreated, dsCreated)
 		}
-
 	}
 }
 
@@ -1019,6 +1017,5 @@ func TestCreateNodeStateIfNotPresent(t *testing.T) {
 		if tc.nodeStateCreated != nodeStateCreated {
 			t.Errorf("Failed: %v - Expected %v, got %v", tc.name, tc.nodeStateCreated, nodeStateCreated)
 		}
-
 	}
 }

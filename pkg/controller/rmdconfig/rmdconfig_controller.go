@@ -28,7 +28,6 @@ import (
 
 const (
 	rdtCatLabel           = "feature.node.kubernetes.io/cpu-rdt.RDTL3CA"
-	rmdNodeLabelConst     = "rmd-node"
 	defaultNamespace      = "default"
 	rmdConfigConst        = "rmdconfig"
 	rmdNodeStateNameConst = "rmd-node-state-"
@@ -130,8 +129,7 @@ func (r *ReconcileRmdConfig) Reconcile(request reconcile.Request) (reconcile.Res
 
 	// List Nodes in cluster that already have labels in rmdconfig nodeSelector
 	labelledNodeList := &corev1.NodeList{}
-	listOption := client.MatchingLabels{}
-	listOption = rmdConfig.Spec.RmdNodeSelector
+	listOption := rmdConfig.Spec.RmdNodeSelector
 	// Create RMD Daemonset if not present
 	err = r.createDaemonSetIfNotPresent(rmdConfig, rmdDaemonSetPath)
 	if err != nil {
