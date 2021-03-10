@@ -21,9 +21,25 @@ spec:
               volumeMounts:
               - mountPath: /sys/fs/
                 name: resctrl
+            - name: intel-rmd-deviceplugin
+              image: intel-rmd-deviceplugin 
+              imagePullPolicy: IfNotPresent
+              command: [ "/bin/bash", "-c", "--" ]
+              args: [ "/usr/local/bin/intel-rmd-deviceplugin" ]
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+              - mountPath: /var/lib/kubelet/device-plugins/
+                name: devicesock
+                readOnly: false
             volumes:
             - name: resctrl
               hostPath:
                 path: /sys/fs/
+            - name: devicesock
+              hostPath:
+                path: /var/lib/kubelet/device-plugins/
             nodeSelector: 
                 "feature.node.kubernetes.io/cpu-rdt.RDTL3CA": "true"

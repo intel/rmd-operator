@@ -3,7 +3,6 @@ kind: Pod
 metadata:
   generateName: pod-guaranteed-cache-pstate-
   annotations:
-    container1_cache_min: "2"
     container1_pstate_ratio: "1.5"
     container1_pstate_monitoring: "on"
 spec:

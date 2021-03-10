@@ -3,11 +3,11 @@ package nodeagent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strconv"
 	"strings"
 
 	intelv1alpha1 "github.com/intel/rmd-operator/pkg/apis/intel/v1alpha1"
+	"github.com/intel/rmd-operator/pkg/podresourcesclient"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/apis/core"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -30,20 +29,12 @@ const (
 	defaultNamespace      = "default"
 	rmdWorkloadNameConst  = "-rmd-workload-"
 	policyConst           = "policy"
-	cacheMinConst         = "cache_min"
 	pstateMonitoringConst = "pstate_monitoring"
 	pstateRatioConst      = "pstate_ratio"
 	mbaPercentageConst    = "mba_percentage"
 	mbaMbpsConst          = "mba_mbps"
 	l3Cache               = "intel.com/l3_cache_ways"
-	dockerPrefix          = "docker://"
-	cpusetFileConst       = "/cpuset.cpus"
-	kubepodsConst         = "kubepods"
 )
-
-var unifiedCgroupPath = "/sys/fs/cgroup/"
-var legacyCgroupPath = "/sys/fs/cgroup/cpuset/"
-var hybridCgroupPath = "/sys/fs/cgroup/unified/"
 
 var log = logf.Log.WithName("controller_pod")
 
@@ -65,7 +56,13 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcilePod{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	logger := log.WithName("newReconciler")
+	podResourcesClient, err := podresourcesclient.NewPodResourcesClient()
+	if err != nil {
+		logger.Error(err, "unable to create podresources client")
+		return nil
+	}
+	return &ReconcilePod{client: mgr.GetClient(), scheme: mgr.GetScheme(), podResourcesClient: podResourcesClient}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -102,8 +99,9 @@ var _ reconcile.Reconciler = &ReconcilePod{}
 type ReconcilePod struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client             client.Client
+	scheme             *runtime.Scheme
+	podResourcesClient *podresourcesclient.PodResourcesClient
 }
 
 // Reconcile reads that state of the cluster for a Pod object and makes changes based on the state read
@@ -145,7 +143,7 @@ func (r *ReconcilePod) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, nil
 	}
 
-	rmdWorkloads, err := buildRmdWorkload(cachePod)
+	rmdWorkloads, err := r.buildRmdWorkload(cachePod)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -219,7 +217,7 @@ func (r *ReconcilePod) getNodeAgentPod() (*corev1.Pod, error) {
 	return nodeAgentPod, nil
 }
 
-func buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWorkload, error) {
+func (r *ReconcilePod) buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWorkload, error) {
 	logger := log.WithName("buildRmdWorkload")
 
 	// Check pod for containers requesting l3 cache.
@@ -236,7 +234,7 @@ func buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWorkload, error) {
 			continue
 		}
 
-		containerInfo, err := getContainerInfo(pod, container)
+		containerInfo, err := r.getContainerInfo(pod, container)
 		if err != nil {
 			return nil, err
 		}
@@ -257,6 +255,7 @@ func buildRmdWorkload(pod *corev1.Pod) ([]*intelv1alpha1.RmdWorkload, error) {
 		rmdWorkload.SetName(rmdWorkloadNamespacedName.Name)
 		rmdWorkload.SetNamespace(rmdWorkloadNamespacedName.Namespace)
 		rmdWorkload.Spec.Rdt.Cache.Max = containerInfo.maxCache
+		rmdWorkload.Spec.Rdt.Cache.Min = containerInfo.maxCache
 		rmdWorkload.Spec.CoreIds = containerInfo.coreIDs
 		rmdWorkload.Spec.Nodes = make([]string, 0)
 		rmdWorkload.Spec.Nodes = append(rmdWorkload.Spec.Nodes, pod.Spec.NodeName)
@@ -281,12 +280,6 @@ func getAnnotationInfo(rmdWorkload *intelv1alpha1.RmdWorkload, pod *corev1.Pod, 
 			if data != "" {
 				rmdWorkload.Spec.Policy = data
 			}
-		case strings.HasSuffix(field, cacheMinConst):
-			minCache, err := strconv.Atoi(data)
-			if err != nil {
-				continue
-			}
-			rmdWorkload.Spec.Rdt.Cache.Min = minCache
 		case strings.HasSuffix(field, mbaPercentageConst):
 			mbaPercentage, err := strconv.Atoi(data)
 			if err != nil {
@@ -311,7 +304,7 @@ func getAnnotationInfo(rmdWorkload *intelv1alpha1.RmdWorkload, pod *corev1.Pod, 
 	}
 }
 
-func getContainerInfo(pod *corev1.Pod, container corev1.Container) (containerInformation, error) {
+func (r *ReconcilePod) getContainerInfo(pod *corev1.Pod, container corev1.Container) (containerInformation, error) {
 	var containerInfo containerInformation //empty containerInformation struct
 
 	logger := log.WithName("buildRmdWorkload")
@@ -325,16 +318,16 @@ func getContainerInfo(pod *corev1.Pod, container corev1.Container) (containerInf
 		return containerInformation{}, errors.NewServiceUnavailable("pod UID not found")
 	}
 
-	containerID := getContainerID(pod, container.Name)
-	coreIDs, err := readCgroupCpuset(podUID, containerID)
+	coreIDs, err := r.podResourcesClient.GetContainerCPUs(pod.GetObjectMeta().GetName(), container.Name)
 	if err != nil {
-		logger.Error(err, "failed to retrieve cpuset from cgroups")
+		logger.Error(err, "failed to access coreIDs from kubelet podresources endpoint")
 		return containerInformation{}, err
 	}
 	if len(coreIDs) == 0 {
-		logger.Info("cpuset not found in cgroups for container")
-		return containerInformation{}, nil
+		logger.Info("coreIDs list for container is empty")
+		return containerInformation{}, errors.NewServiceUnavailable("coreIDs list for container is empty")
 	}
+
 	containerInfo.coreIDs = coreIDs
 
 	containerInfo.maxCache, err = getMaxCache(&container)
@@ -369,15 +362,6 @@ func getMaxCache(container *corev1.Container) (int, error) {
 	return 0, nil
 }
 
-func getContainerID(pod *corev1.Pod, containerName string) string {
-	for _, containerStatus := range append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...) {
-		if containerStatus.Name == containerName {
-			return containerStatus.ContainerID
-		}
-	}
-	return ""
-}
-
 func exclusiveCPUs(pod *corev1.Pod, container *corev1.Container) bool {
 	if v1qos.GetPodQOS(pod) != corev1.PodQOSGuaranteed {
 		return false
@@ -387,89 +371,4 @@ func exclusiveCPUs(pod *corev1.Pod, container *corev1.Container) bool {
 		return false
 	}
 	return true
-}
-
-func findKubepodsCgroup() (string, error) {
-	treeVersions := []string{unifiedCgroupPath, legacyCgroupPath, hybridCgroupPath}
-	for _, treeVersion := range treeVersions {
-		kubepodsCgroupPath, err := findCgroupPath(treeVersion, kubepodsConst)
-		if err != nil {
-			return "", err
-		}
-		if kubepodsCgroupPath != "" {
-			return kubepodsCgroupPath, nil
-		}
-	}
-	return "", nil
-}
-
-func findPodCgroup(kubepodsCgroupPath string, podUID string) (string, error) {
-	podUIDUnderscores := strings.ReplaceAll(podUID, "-", "_")
-	fileVersions := []string{podUID, podUIDUnderscores}
-	for _, fileVersion := range fileVersions {
-		podCgroupPath, err := findCgroupPath(kubepodsCgroupPath, fileVersion)
-		if err != nil {
-			return "", err
-		}
-		if podCgroupPath != "" {
-			return podCgroupPath, nil
-		}
-	}
-	return "", nil
-}
-
-func readCgroupCpuset(podUID string, containerID string) ([]string, error) {
-	containerID = strings.TrimPrefix(containerID, dockerPrefix)
-	kubepodsCgroupPath, err := findKubepodsCgroup()
-	if err != nil {
-		return nil, err
-	}
-	if kubepodsCgroupPath == "" {
-		return nil, errors.NewServiceUnavailable("kubepods cgroup file not found")
-	}
-
-	podCgroupPath, err := findPodCgroup(kubepodsCgroupPath, podUID)
-	if err != nil {
-		return nil, err
-	}
-	if podCgroupPath == "" {
-		return nil, errors.NewServiceUnavailable(fmt.Sprintf("%s%s%s%s", "podUID ", podUID, " not found in kubepods cgroup ", kubepodsCgroupPath))
-	}
-
-	containerCgroupPath, err := findCgroupPath(podCgroupPath, containerID)
-	if err != nil {
-		return nil, err
-	}
-	if containerCgroupPath == "" {
-		return nil, errors.NewServiceUnavailable(fmt.Sprintf("%s%s%s%s", "containerID ", containerID, " not found in pod cgroup ", podCgroupPath))
-	}
-
-	cpusetFile := fmt.Sprintf("%s%s", containerCgroupPath, cpusetFileConst)
-	cpusetBytes, err := ioutil.ReadFile(cpusetFile)
-	if err != nil {
-		return nil, err
-	}
-	cpuSetStr := strings.TrimSpace(string(cpusetBytes))
-	cpuSet := cpuset.MustParse(cpuSetStr)
-	cpuSetSlice := cpuSet.ToSlice()
-	cpuStrSlice := make([]string, 0)
-	for _, cpu := range cpuSetSlice {
-		cpuStrSlice = append(cpuStrSlice, strconv.Itoa(cpu))
-	}
-	return cpuStrSlice, nil
-}
-
-func findCgroupPath(base string, substring string) (string, error) {
-	var fullPath string
-	items, err := ioutil.ReadDir(base)
-	if err != nil {
-		return fullPath, err
-	}
-	for _, item := range items {
-		if strings.Contains(item.Name(), substring) {
-			fullPath = fmt.Sprintf("%s%s%s", base, item.Name(), "/")
-			return fullPath, nil
-		}
-	}
-	return fullPath, nil
 }

@@ -17,10 +17,16 @@ spec:
         - image: 'intel-rmd-node-agent:latest'
           imagePullPolicy: IfNotPresent
           name: rmd-node-agent
+          command: [ "/bin/bash", "-c", "--" ]
+          args: [ "/usr/local/bin/intel-rmd-node-agent"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
-            - mountPath: /sys/fs/
-              name: cgroup
-              mountPropagation: HostToContainer
+            - mountPath: /var/lib/kubelet/pod-resources/
+              name: kubesock
+              readOnly: false
           env:
             - name: WATCH_NAMESPACE
               value: ''
@@ -31,8 +37,8 @@ spec:
             - name: OPERATOR_NAME
               value: intel-rmd-node-agent
       volumes:
-        - name: cgroup
+        - name: kubesock
           hostPath:
-            path: /sys/fs/
+            path: /var/lib/kubelet/pod-resources/
       nodeSelector:
         feature.node.kubernetes.io/cpu-rdt.RDTL3CA: 'true'
