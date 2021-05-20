@@ -221,7 +221,6 @@ func TestFormatWorkload(t *testing.T) {
 		}
 		ts.Close()
 	}
-
 }
 
 func TestGetAvailableCacheWays(t *testing.T) {
@@ -329,7 +328,6 @@ func TestGetAvailableCacheWays(t *testing.T) {
 		}
 
 		ts.Close()
-
 	}
 }
 

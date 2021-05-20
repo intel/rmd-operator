@@ -52,7 +52,6 @@ func createReconcileRmdWorkloadObject(rmdWorkload *intelv1alpha1.RmdWorkload) (*
 	r := &ReconcileRmdWorkload{client: cl, rmdClient: rmdCl, scheme: s, rmdNodeData: rmdNodeData}
 
 	return r, nil
-
 }
 
 func createListeners(address string, httpResponses map[string]([]rmdtypes.RDTWorkLoad)) (*httptest.Server, error) {

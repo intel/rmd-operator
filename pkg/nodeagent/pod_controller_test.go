@@ -799,7 +799,6 @@ func TestGetMaxCache(t *testing.T) {
 			functionFailed = true
 		}
 		if functionFailed != tc.expectedErr {
-
 			t.Errorf("Failed: An error has occurred")
 		}
 		if limit != tc.cacheLimit {

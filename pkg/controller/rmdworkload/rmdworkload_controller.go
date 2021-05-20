@@ -24,10 +24,9 @@ import (
 )
 
 const (
-	defaultNamespace     = "default"
-	rmdWorkloadNameConst = "-rmd-workload-"
-	rmdPodNameConst      = "rmd-pod"
-	rmdConfigConst       = "rmdconfig"
+	defaultNamespace = "default"
+	rmdPodNameConst  = "rmd-pod"
+	rmdConfigConst   = "rmdconfig"
 )
 
 var log = logf.Log.WithName("controller_rmdworkload")
@@ -149,7 +148,7 @@ func (r *ReconcileRmdWorkload) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	for _, targetedNode := range targetedNodes {
-		if targetedNode.workloadExists == false {
+		if !targetedNode.workloadExists {
 			reqLogger.Info("Workload not found on RMD instance, create.")
 			err := r.addWorkload(targetedNode.rmdAddress, rmdWorkload, targetedNode.nodeName)
 			if err != nil {
@@ -250,7 +249,6 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdW
 			targetedNodes = append(targetedNodes, targetedNode)
 		}
 		return targetedNodes, nil
-
 	}
 
 	// If nodeSelector has been specified in RmdWorkload, only consider nodes with matching labels.
@@ -267,10 +265,8 @@ func (r *ReconcileRmdWorkload) findTargetedNodes(request reconcile.Request, rmdW
 	}
 
 	matchingLabels := labels.Merge(rmdConfig.Spec.RmdNodeSelector, rmdWorkload.Spec.NodeSelector)
-	labelsMap := make(map[string]string)
-	labelsMap = matchingLabels
 	nodeList := &corev1.NodeList{}
-	err = r.client.List(context.TODO(), nodeList, client.MatchingLabels(labelsMap))
+	err = r.client.List(context.TODO(), nodeList, client.MatchingLabels(matchingLabels))
 	if err != nil {
 		reqLogger.Error(err, "Failed to list nodes according to RmdWorkload nodeSelector")
 		return nil, err
@@ -395,7 +391,6 @@ func (r *ReconcileRmdWorkload) getPodAddress(nodeName string) (string, error) {
 	addressPrefix := r.rmdClient.GetAddressPrefix()
 	address := fmt.Sprintf("%s%s%s%d", addressPrefix, podIP, ":", rmdPod.Spec.Containers[0].Ports[0].ContainerPort)
 	return address, nil
-
 }
 
 func (r *ReconcileRmdWorkload) addWorkload(address string, rmdWorkload *intelv1alpha1.RmdWorkload, nodeName string) error {
