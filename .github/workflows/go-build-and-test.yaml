@@ -1,0 +1,38 @@
+name: Go Build and Test 
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+            CC: "gcc -std=gnu99 -Wno-error=implicit-function-declaration"
+            LD_LIBRARY_PATH: "intel-cmt-cat/lib"
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.13
+
+    - name: Install Dependencies
+      uses: actions/checkout@v2
+      with:
+        repository: intel/intel-cmt-cat
+        path: intel-cmt-cat
+    
+    - name: Build Dependencies
+      run: |
+        cd intel-cmt-cat
+        sudo make install
+
+    - name: Build
+      run: make build
+    
+    - name: Test  
+      run: make test

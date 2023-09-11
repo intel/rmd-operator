@@ -1,0 +1,60 @@
+name: Go-static-analysis
+on:
+  push: 
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  golangci:
+    name: Lint
+    runs-on: ubuntu-latest
+    env:
+            CC: "gcc -std=gnu99 -Wno-error=implicit-function-declaration"
+            LD_LIBRARY_PATH: "intel-cmt-cat/lib"
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.13
+
+    - name: Install Dependencies
+      uses: actions/checkout@v2
+      with:
+        repository: intel/intel-cmt-cat
+        path: intel-cmt-cat
+    
+    - name: Build Dependencies
+      run: |
+        cd intel-cmt-cat
+        sudo make install
+
+    - uses: actions/checkout@v2
+
+    - name: golangci-lint  
+      uses: golangci/golangci-lint-action@v2
+      with:
+         version: v1.29
+         args: --enable=golint,bodyclose,gosec,whitespace --skip-files=.*_test.go
+
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+
+  hadolint:
+    runs-on: ubuntu-latest
+    name: Hadolint
+    steps:
+    - uses: actions/checkout@v2
+    - uses: brpaz/hadolint-action@v1.2.1
+      with:
+        dockerfile: build/Dockerfile
+    - uses: brpaz/hadolint-action@v1.2.1
+      with:
+        dockerfile: build/deviceplugin.Dockerfile
+    - uses: brpaz/hadolint-action@v1.2.1
+      with:
+        dockerfile: build/nodeagent.Dockerfile
